@@ -187,9 +187,9 @@ fn main() -> sampi::Result<()> {
             let s = builder.build()?;
 
             if hex {
-                print!("{}", s.to_hex());
+                println!("{}", s.to_hex());
             } else {
-                print!("{}", s.to_base64());
+                println!("{}", s.to_base64());
             }
         }
     }
