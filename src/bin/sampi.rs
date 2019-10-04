@@ -161,7 +161,7 @@ fn main() -> sampi::Result<()> {
             let mut data = String::new();
             io::stdin().read_to_string(&mut data)?;
 
-            let mut builder = kp.new_sampi(data.trim());
+            let mut builder = kp.new_sampi();
 
             if let Some(metadata) = metadata {
                 let mut metadata_array = [0; 16];
@@ -184,7 +184,7 @@ fn main() -> sampi::Result<()> {
                 builder = builder.with_pow_threads(pow_threads);
             }
 
-            let s = builder.build()?;
+            let s = builder.build(data.trim())?;
 
             if hex {
                 println!("{}", s.to_hex());

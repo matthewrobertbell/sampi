@@ -116,15 +116,14 @@ impl SampiKeyPair {
         Ok(SampiKeyPair::from_bytes(&bytes)?)
     }
 
-    pub fn new_sampi(&self, data: impl Into<Vec<u8>>) -> SampiBuilder {
-        SampiBuilder::new(&self, data.into())
+    pub fn new_sampi(&self) -> SampiBuilder {
+        SampiBuilder::new(&self)
     }
 }
 
 #[derive(Clone)]
 pub struct SampiBuilder<'a> {
     metadata: [u8; 16],
-    data: Vec<u8>,
     min_pow_score: Option<u8>,
     ss_keypair: &'a SampiKeyPair,
     unix_time: Option<u64>,
@@ -132,20 +131,14 @@ pub struct SampiBuilder<'a> {
 }
 
 impl<'a> SampiBuilder<'a> {
-    fn new(ss_keypair: &'a SampiKeyPair, data: Vec<u8>) -> Self {
+    fn new(ss_keypair: &'a SampiKeyPair) -> Self {
         SampiBuilder {
             metadata: [0; 16],
-            data,
             min_pow_score: None,
             ss_keypair,
             unix_time: None,
             threads_count: 1,
         }
-    }
-
-    pub fn with_data(mut self, data: impl Into<Vec<u8>>) -> Self {
-        self.data = data.into();
-        self
     }
 
     pub fn with_metadata(mut self, metadata: [u8; 16]) -> Self {
@@ -179,15 +172,52 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn build(self) -> Result<Sampi> {
+    pub fn build(&self, data: impl Into<Vec<u8>>) -> Result<Sampi> {
         Sampi::new(
-            self.data,
+            data.into(),
             self.metadata,
             self.min_pow_score,
             &self.ss_keypair,
             self.unix_time,
             self.threads_count,
         )
+    }
+
+    pub fn build_from_reader<R: 'a + Read>(&'a self, mut r: R) -> impl Iterator<Item = Sampi> + 'a {
+        let mut count: u32 = 0;
+        let mut buf = [0; MAX_DATA_LENGTH];
+        let mut previous_hash = [0; 4];
+        let mut metadata = [0; 16];
+
+        let mut random_id = [0u8; 8];
+        OsRng::new().unwrap().fill(&mut random_id);
+
+        std::iter::from_fn(move || match r.read(&mut buf) {
+            Ok(0) => None,
+            Ok(n) => {
+                count += 1;
+                dbg!(count);
+                dbg!(n);
+
+                metadata.copy_from_slice(
+                    serialize(&(random_id, count, previous_hash))
+                        .unwrap()
+                        .as_slice(),
+                );
+
+                let s = self
+                    .ss_keypair
+                    .new_sampi()
+                    .with_metadata(metadata)
+                    .build(&buf[0..n])
+                    .unwrap();
+
+                previous_hash.copy_from_slice(&s.get_hash_bytes()[..4]);
+
+                Some(s)
+            }
+            Err(_) => None,
+        })
     }
 }
 

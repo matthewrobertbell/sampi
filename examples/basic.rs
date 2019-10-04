@@ -4,7 +4,7 @@ fn main() -> Result<()> {
     let kp = SampiKeyPair::new()?;
 
     let data = "Hello World! 你好!";
-    let sampi = kp.new_sampi(data).build()?;
+    let sampi = kp.new_sampi().build(data)?;
 
     println!("Sampi size in bytes: {}", sampi.to_bytes().len());
     let base64_string = sampi.to_base64();

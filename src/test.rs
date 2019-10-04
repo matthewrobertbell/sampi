@@ -4,7 +4,7 @@ use super::*;
 fn test_to_and_from_bytes() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let data = "Hello, World".as_bytes().to_vec();
-    let s = kp.new_sampi(data.clone()).build()?;
+    let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
 
     let bytes = s.to_bytes();
@@ -16,7 +16,7 @@ fn test_to_and_from_bytes() -> Result<()> {
 fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let data = "Hello, World".as_bytes().to_vec();
-    let s = kp.new_sampi(data.clone()).build()?;
+    let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
 
     let mut bytes = s.to_bytes();
@@ -33,7 +33,7 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
 fn test_to_and_from_base64() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let data = "Hello, World".as_bytes().to_vec();
-    let s = kp.new_sampi(data.clone()).build()?;
+    let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
 
     let base64 = s.to_base64();
@@ -45,7 +45,7 @@ fn test_to_and_from_base64() -> Result<()> {
 fn test_to_and_from_hex() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let data = "Hello, World".as_bytes().to_vec();
-    let s = kp.new_sampi(data.clone()).build()?;
+    let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
 
     let hex = s.to_hex();
@@ -56,16 +56,16 @@ fn test_to_and_from_hex() -> Result<()> {
 #[test]
 fn test_data_sizes() -> Result<()> {
     let kp = SampiKeyPair::new()?;
-    assert!(kp.new_sampi(vec![]).build().is_ok());
-    assert!(kp.new_sampi(vec![0; 900]).build().is_ok());
-    assert!(kp.new_sampi(vec![0; 901]).build().is_err());
+    assert!(kp.new_sampi().build(vec![]).is_ok());
+    assert!(kp.new_sampi().build(vec![0; 900]).is_ok());
+    assert!(kp.new_sampi().build(vec![0; 901]).is_err());
     Ok(())
 }
 
 #[test]
 fn test_pow() -> Result<()> {
     let kp = SampiKeyPair::new()?;
-    let s = kp.new_sampi(vec![]).with_pow(20).build()?;
+    let s = kp.new_sampi().with_pow(20).build(vec![])?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     assert!(Sampi::from_base64(&base64).is_ok());
@@ -78,10 +78,10 @@ fn test_pow() -> Result<()> {
 fn test_one_thread_pow() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let s = kp
-        .new_sampi(vec![])
+        .new_sampi()
         .with_pow(20)
         .with_pow_threads(1)
-        .build()?;
+        .build(vec![])?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     assert!(Sampi::from_base64(&base64).is_ok());
@@ -95,7 +95,7 @@ fn test_utf8() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let my_string = "Hello, World";
     let data = my_string.as_bytes().to_vec();
-    let s = kp.new_sampi(data.clone()).build()?;
+    let s = kp.new_sampi().build(&data[..])?;
 
     assert_eq!(s.data, data);
     assert_eq!(s.data_as_string()?, my_string);
@@ -105,7 +105,7 @@ fn test_utf8() -> Result<()> {
 #[test]
 fn test_from_str() -> Result<()> {
     let kp = SampiKeyPair::new()?;
-    let s = kp.new_sampi(vec![1, 2, 3]).build()?;
+    let s = kp.new_sampi().build(vec![1, 2, 3])?;
     let base64 = s.to_base64();
     let hex = s.to_hex();
 
@@ -116,8 +116,8 @@ fn test_from_str() -> Result<()> {
 #[test]
 fn test_nesting() -> Result<()> {
     let kp = SampiKeyPair::new()?;
-    let s_1 = kp.new_sampi(vec![1, 2, 3]).build()?;
-    let s_2 = kp.new_sampi(s_1.to_bytes()).build()?;
+    let s_1 = kp.new_sampi().build(vec![1, 2, 3])?;
+    let s_2 = kp.new_sampi().build(s_1.to_bytes())?;
     let s_3 = Sampi::from_bytes(&s_2.data)?;
     assert_eq!(s_1.data, s_3.data);
     assert_eq!(s_1.get_unix_time(), s_3.get_unix_time());
@@ -133,7 +133,7 @@ fn test_bincode_storage() -> Result<()> {
     let v = (1, 2.0, 'a');
     let bincoded = bincode::serialize(&v)?;
 
-    let s_1 = kp.new_sampi(&bincoded[..]).build()?;
+    let s_1 = kp.new_sampi().build(&bincoded[..])?;
     let s_2 = Sampi::from_hex(&s_1.to_hex())?;
 
     let decoded_v = bincode::deserialize(&s_2.data)?;
@@ -146,7 +146,7 @@ fn test_ordering() -> Result<()> {
     let kp = SampiKeyPair::new()?;
     let mut sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
-        .map(|i| kp.new_sampi(vec![]).with_unix_time(i).build().unwrap())
+        .map(|i| kp.new_sampi().with_unix_time(i).build(vec![]).unwrap())
         .collect();
     assert_eq!(sampis[0].get_unix_time(), 5);
     sampis.sort();
