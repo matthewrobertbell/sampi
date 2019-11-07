@@ -29,7 +29,7 @@ use js_sys::Date;
 
 big_array! { BigArray; }
 
-const MAX_DATA_LENGTH: usize = 900;
+pub const MAX_DATA_LENGTH: usize = 900;
 const SAMPI_OVERHEAD: usize = 124;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -59,6 +59,10 @@ impl SampiKeyPair {
 
     pub fn public_key_as_hex(&self) -> String {
         hex::encode(&self.keypair.public)
+    }
+
+    pub fn public_key(&self) -> [u8; 32] {
+        *self.keypair.public.as_bytes()
     }
 
     fn data_dir() -> Result<PathBuf> {
@@ -398,6 +402,7 @@ impl Sampi {
         signable_data
     }
 
+    /// Get the Proof of Work Score
     pub fn get_pow_score(&self) -> u8 {
         let signable_data = self.generate_signable_data();
         calculate_pow_score(&signable_data)
@@ -522,6 +527,63 @@ impl PartialOrd for Sampi {
 impl PartialEq for Sampi {
     fn eq(&self, other: &Self) -> bool {
         self.get_unix_time() == other.get_unix_time()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SampiFilter {
+    pub minimum_pow_score: u8,
+    pub public_key: Option<[u8; 32]>,
+    pub minimum_unix_time: Option<u64>,
+    pub maximum_unix_time: Option<u64>,
+    pub minimum_data_length: u16,
+    pub maximum_data_length: u16,
+    pub metadata: [Option<u8>; 16],
+}
+
+impl SampiFilter {
+    /// Test whether a given Sampi Message matches this filter
+    pub fn matches(&self, s: &Sampi) -> bool {
+        if s.get_pow_score() < self.minimum_pow_score {
+            return false;
+        }
+
+        if let Some(public_key) = self.public_key {
+            if public_key != s.public_key {
+                return false;
+            }
+        }
+
+        let unix_time = s.get_unix_time();
+        if unix_time < self.minimum_unix_time.unwrap_or(0)
+            || unix_time > self.maximum_unix_time.unwrap_or(2u64.pow(48))
+        {
+            dbg!("returning");
+            return false;
+        }
+
+        let data_length = s.data.len() as u16;
+        if data_length < self.minimum_data_length || data_length > self.maximum_data_length {
+            return false;
+        }
+
+        self.metadata
+            .iter()
+            .zip(s.metadata.iter())
+            .all(|(filter_byte, metadata_byte)| filter_byte.is_none() || filter_byte.as_ref() == Some(metadata_byte))
+    }
+
+    /// Create a new SampiFilter, which will match all Sampi messages
+    pub fn new() -> SampiFilter {
+        SampiFilter {
+            minimum_pow_score: 0,
+            public_key: None,
+            minimum_unix_time: None,
+            maximum_unix_time: None,
+            minimum_data_length: 0,
+            maximum_data_length: MAX_DATA_LENGTH as u16,
+            metadata: [None; 16],
+        }
     }
 }
 

@@ -156,3 +156,18 @@ fn test_ordering() -> Result<()> {
     );
     Ok(())
 }
+
+#[test]
+fn test_filtering() -> Result<()> {
+    let kp = SampiKeyPair::new()?;
+    let sampis: Vec<_> = vec![5, 4, 3, 2, 1]
+        .into_iter()
+        .map(|i| kp.new_sampi().with_unix_time(i).build(vec![]).unwrap())
+        .collect();
+
+    let mut filter = SampiFilter::new();
+    filter.maximum_unix_time = Some(3);
+
+    assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
+    Ok(())
+}
