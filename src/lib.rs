@@ -570,7 +570,9 @@ impl SampiFilter {
         self.metadata
             .iter()
             .zip(s.metadata.iter())
-            .all(|(filter_byte, metadata_byte)| filter_byte.is_none() || filter_byte.as_ref() == Some(metadata_byte))
+            .all(|(filter_byte, metadata_byte)| {
+                filter_byte.is_none() || filter_byte.as_ref() == Some(metadata_byte)
+            })
     }
 
     /// Create a new SampiFilter, which will match all Sampi messages
