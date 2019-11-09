@@ -558,7 +558,6 @@ impl SampiFilter {
         if unix_time < self.minimum_unix_time.unwrap_or(0)
             || unix_time > self.maximum_unix_time.unwrap_or(2u64.pow(48))
         {
-            dbg!("returning");
             return false;
         }
 
@@ -571,7 +570,7 @@ impl SampiFilter {
             .iter()
             .zip(s.metadata.iter())
             .all(|(filter_byte, metadata_byte)| {
-                filter_byte.is_none() || filter_byte.as_ref() == Some(metadata_byte)
+                filter_byte.map(|f_b| f_b == *metadata_byte).unwrap_or(true)
             })
     }
 
