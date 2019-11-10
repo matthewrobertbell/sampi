@@ -32,7 +32,7 @@ big_array! { BigArray; }
 pub const MAX_DATA_LENGTH: usize = 900;
 const SAMPI_OVERHEAD: usize = 124;
 
-pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
+pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
 pub struct SampiKeyPair {
     keypair: Keypair,
