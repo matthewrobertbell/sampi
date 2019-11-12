@@ -225,7 +225,7 @@ impl<'a> SampiBuilder<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Sampi {
     length: u16,
     pub data: Vec<u8>,
@@ -530,7 +530,7 @@ impl PartialEq for Sampi {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
     pub public_key: Option<[u8; 32]>,
