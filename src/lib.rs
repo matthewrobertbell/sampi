@@ -526,7 +526,7 @@ impl PartialOrd for Sampi {
 
 impl PartialEq for Sampi {
     fn eq(&self, other: &Self) -> bool {
-        self.get_unix_time() == other.get_unix_time()
+        self.get_unix_time() == other.get_unix_time() && self.data == other.data && self.metadata == other.metadata && self.public_key == other.public_key && self.length == other.length && self.nonce == other.nonce
     }
 }
 
