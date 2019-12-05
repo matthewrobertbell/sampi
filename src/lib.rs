@@ -419,8 +419,11 @@ impl Sampi {
     }
 
     /// Get the SHA256 hash of the serialized bytes of this object, as a Vector of bytes
-    pub fn get_hash_bytes(&self) -> Vec<u8> {
-        Sha256::digest(&self.to_bytes()).to_vec()
+    pub fn get_hash_bytes(&self) -> [u8; 32] {
+        let mut a = [0u8; 32];
+        let h = Sha256::digest(&self.to_bytes());
+        a.clone_from_slice(&h);
+        a
     }
 
     fn new(
