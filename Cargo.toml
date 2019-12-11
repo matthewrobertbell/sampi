@@ -1,6 +1,6 @@
 [package]
 name = "sampi"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Matt"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -14,7 +14,8 @@ wasm = ["ed25519-dalek/nightly", "rand/wasm-bindgen", "js-sys"]
 [dependencies]
 ed25519-dalek = "1.0.0-pre.1"
 base64 = "0.9.3"
-rand = "0.6.5"
+rand = "0.7"
+rand_core = "0.5.1"
 sha2 = "0.8.0"
 serde = "1.0"
 serde-big-array = "0.1.5"

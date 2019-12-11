@@ -16,8 +16,8 @@ use dirs;
 use ed25519_dalek::{Keypair, PublicKey, Signature};
 use glob::glob;
 use hex;
-use rand::rngs::OsRng;
 use rand::Rng;
+use rand_core::OsRng;
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
@@ -40,9 +40,8 @@ pub struct SampiKeyPair {
 
 impl SampiKeyPair {
     pub fn new() -> Result<Self> {
-        let mut csprng: OsRng = OsRng::new().unwrap();
         Ok(Self {
-            keypair: Keypair::generate(&mut csprng),
+            keypair: Keypair::generate(&mut OsRng),
         })
     }
 
@@ -151,7 +150,7 @@ impl<'a> SampiBuilder<'a> {
     }
 
     pub fn with_random_metadata(mut self) -> Self {
-        OsRng::new().unwrap().fill(&mut self.metadata);
+        OsRng.fill(&mut self.metadata);
         self
     }
 
@@ -172,7 +171,7 @@ impl<'a> SampiBuilder<'a> {
     }
 
     pub fn with_random_unix_time(mut self) -> Self {
-        self.unix_time = Some(OsRng::new().unwrap().gen_range(0, 2u64.pow(48) - 1));
+        self.unix_time = Some(OsRng.gen_range(0, 2u64.pow(48) - 1));
         self
     }
 
@@ -194,7 +193,7 @@ impl<'a> SampiBuilder<'a> {
         let mut metadata = [0; 16];
 
         let mut random_id = [0u8; 8];
-        OsRng::new().unwrap().fill(&mut random_id);
+        OsRng.fill(&mut random_id);
 
         std::iter::from_fn(move || match r.read(&mut buf) {
             Ok(0) => None,
