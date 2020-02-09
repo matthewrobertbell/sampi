@@ -3,7 +3,7 @@ use std::time::Instant;
 use sampi::{Result, Sampi, SampiKeyPair};
 
 fn main() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
 
     let data = "Hello World! 你好!";
     for i in 0..=200 {

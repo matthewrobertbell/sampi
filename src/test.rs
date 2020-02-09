@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_to_and_from_bytes() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let data = "Hello, World".as_bytes().to_vec();
     let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
@@ -14,7 +14,7 @@ fn test_to_and_from_bytes() -> Result<()> {
 
 #[test]
 fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let data = "Hello, World".as_bytes().to_vec();
     let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
@@ -31,7 +31,7 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
 
 #[test]
 fn test_to_and_from_base64() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let data = "Hello, World".as_bytes().to_vec();
     let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
@@ -43,7 +43,7 @@ fn test_to_and_from_base64() -> Result<()> {
 
 #[test]
 fn test_to_and_from_hex() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let data = "Hello, World".as_bytes().to_vec();
     let s = kp.new_sampi().build(&data[..])?;
     assert_eq!(s.data, data);
@@ -55,7 +55,7 @@ fn test_to_and_from_hex() -> Result<()> {
 
 #[test]
 fn test_data_sizes() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     assert!(kp.new_sampi().build(vec![]).is_ok());
     assert!(kp.new_sampi().build(vec![0; 900]).is_ok());
     assert!(kp.new_sampi().build(vec![0; 901]).is_err());
@@ -64,7 +64,7 @@ fn test_data_sizes() -> Result<()> {
 
 #[test]
 fn test_pow() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let s = kp.new_sampi().with_pow(20).build(vec![])?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
@@ -76,7 +76,7 @@ fn test_pow() -> Result<()> {
 
 #[test]
 fn test_one_thread_pow() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let s = kp
         .new_sampi()
         .with_pow(20)
@@ -92,7 +92,7 @@ fn test_one_thread_pow() -> Result<()> {
 
 #[test]
 fn test_utf8() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let my_string = "Hello, World";
     let data = my_string.as_bytes().to_vec();
     let s = kp.new_sampi().build(&data[..])?;
@@ -104,7 +104,7 @@ fn test_utf8() -> Result<()> {
 
 #[test]
 fn test_from_str() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let s = kp.new_sampi().build(vec![1, 2, 3])?;
     let base64 = s.to_base64();
     let hex = s.to_hex();
@@ -115,7 +115,7 @@ fn test_from_str() -> Result<()> {
 
 #[test]
 fn test_nesting() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let s_1 = kp.new_sampi().build(vec![1, 2, 3])?;
     let s_2 = kp.new_sampi().build(s_1.to_bytes())?;
     let s_3 = Sampi::from_bytes(&s_2.data)?;
@@ -129,7 +129,7 @@ fn test_nesting() -> Result<()> {
 
 #[test]
 fn test_bincode_storage() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let v = (1, 2.0, 'a');
     let bincoded = bincode::serialize(&v)?;
 
@@ -143,7 +143,7 @@ fn test_bincode_storage() -> Result<()> {
 
 #[test]
 fn test_ordering() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let mut sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
         .map(|i| kp.new_sampi().with_unix_time(i).build(vec![]).unwrap())
@@ -159,7 +159,7 @@ fn test_ordering() -> Result<()> {
 
 #[test]
 fn test_filtering() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
     let sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
         .map(|i| kp.new_sampi().with_unix_time(i).build(vec![]).unwrap())

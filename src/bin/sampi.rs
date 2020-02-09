@@ -147,11 +147,11 @@ fn main() -> sampi::Result<()> {
             hex,
         } => {
             let kp = match key {
-                None => sampi::SampiKeyPair::new()?,
+                None => sampi::SampiKeyPair::new(),
                 Some(key) => match sampi::SampiKeyPair::load_from_file(&key) {
                     Ok(kp) => kp,
                     Err(_) => {
-                        let kp = sampi::SampiKeyPair::new()?;
+                        let kp = sampi::SampiKeyPair::new();
                         kp.save_to_file(&key)?;
                         kp
                     }

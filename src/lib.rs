@@ -39,10 +39,10 @@ pub struct SampiKeyPair {
 }
 
 impl SampiKeyPair {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             keypair: Keypair::generate(&mut OsRng),
-        })
+        }
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {

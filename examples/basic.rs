@@ -1,7 +1,7 @@
 use sampi::{Result, Sampi, SampiKeyPair};
 
 fn main() -> Result<()> {
-    let kp = SampiKeyPair::new()?;
+    let kp = SampiKeyPair::new();
 
     let data = "Hello World! 你好!";
     let sampi = kp.new_sampi().build(data)?;
