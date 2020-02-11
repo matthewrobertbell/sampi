@@ -65,13 +65,9 @@ impl SampiKeyPair {
     }
 
     fn data_dir() -> Result<PathBuf> {
-        let env_path = env::vars()
-            .filter(|(k, _)| k == "SAMPI_KEYS_PATH")
-            .map(|(_, v)| PathBuf::from(v))
-            .next();
-        let path = match env_path {
-            Some(env_path) => env_path,
-            None => {
+        let path = match env::var("SAMPI_KEYS_PATH") {
+            Ok(env_path) => PathBuf::from(env_path),
+            Err(_) => {
                 let mut path = dirs::data_dir().ok_or("Can't find Data Dir")?;
                 path.push("sampi");
                 path
