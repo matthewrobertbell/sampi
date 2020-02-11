@@ -100,7 +100,7 @@ fn main() -> sampi::Result<()> {
             io::stdin().read_to_string(&mut data)?;
             match sampi::Sampi::from_str(&data.trim()) {
                 Ok(s) => {
-                    if acceptable_public_keys.len() > 0
+                    if !acceptable_public_keys.is_empty()
                         && !acceptable_public_keys
                             .iter()
                             .any(|k| hex::encode(&k.0) == s.public_key_as_hex())

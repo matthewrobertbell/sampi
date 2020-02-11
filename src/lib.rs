@@ -101,7 +101,7 @@ impl SampiKeyPair {
         let mut path = Self::data_dir()?;
         path.push(format!("{}.key", name));
         let mut writer = File::create(path)?;
-        writer.write(&bytes)?;
+        writer.write_all(&bytes)?;
         Ok(())
     }
 
@@ -235,7 +235,7 @@ pub struct Sampi {
 impl Sampi {
     pub fn data_as_string(&self) -> Result<String> {
         std::str::from_utf8(&self.data)
-            .map(|s| s.to_string().to_owned())
+            .map(|s| s.to_string())
             .map_err(|_| "Not a valid UTF8 string".into())
     }
 
@@ -332,7 +332,7 @@ impl Sampi {
     }
 
     pub fn to_base64(&self) -> String {
-        base64_encode_config(&self.serialize(), base64::URL_SAFE).to_owned()
+        base64_encode_config(&self.serialize(), base64::URL_SAFE)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
@@ -350,7 +350,7 @@ impl Sampi {
 
     /// Serialize this Sampi object to a hex string
     pub fn to_hex(&self) -> String {
-        hex::encode(&self.serialize()).to_owned()
+        hex::encode(&self.serialize())
     }
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
@@ -381,7 +381,7 @@ impl Sampi {
 
     /// Get the metadata as a hex string
     pub fn metadata_as_hex(&self) -> String {
-        hex::encode(&self.metadata).to_owned()
+        hex::encode(&self.metadata)
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
@@ -554,7 +554,7 @@ impl SampiFilter {
 
         let unix_time = s.get_unix_time();
         if unix_time < self.minimum_unix_time.unwrap_or(0)
-            || unix_time > self.maximum_unix_time.unwrap_or(2u64.pow(48))
+            || unix_time > self.maximum_unix_time.unwrap_or_else(|| 2u64.pow(48))
         {
             return false;
         }
@@ -594,7 +594,7 @@ fn calculate_pow_score(signable_data: &[u8]) -> u8 {
     if count <= 256 {
         count = 256 - count;
     } else {
-        count = count - 256;
+        count -= 256;
     }
     if count == 256 {
         count = 255;
@@ -602,8 +602,7 @@ fn calculate_pow_score(signable_data: &[u8]) -> u8 {
     count as u8
 }
 
-fn find_nonce(min_pow_score: u8, signable_data: Vec<u8>) -> u32 {
-    let mut signable_data = signable_data.to_owned();
+fn find_nonce(min_pow_score: u8, mut signable_data: Vec<u8>) -> u32 {
     signable_data.extend(vec![0; 4]);
     let signable_data_length = signable_data.len();
 
@@ -623,11 +622,10 @@ fn find_nonce_threaded(
     start: u32,
     offset: u32,
     min_pow_score: u8,
-    signable_data: Vec<u8>,
+    mut signable_data: Vec<u8>,
     sender: &mpsc::Sender<u32>,
     solution_found: Arc<AtomicBool>,
 ) {
-    let mut signable_data = signable_data.to_owned();
     signable_data.extend(vec![0; 4]);
     let signable_data_length = signable_data.len();
     for (i, nonce) in (start..u32::max_value())
