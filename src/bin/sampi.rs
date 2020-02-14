@@ -101,11 +101,14 @@ fn main() -> sampi::Result<()> {
                     }
                     if verbose {
                         println!("Public Key: {}", s.public_key_as_hex());
-                        println!("UNIX Time: {}", s.get_unix_time());
+                        println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
                     }
                     if hex {
                         print!("{}", &s.to_hex());
+                    }
+                    else {
+                        print!("{:?}", &s.data);
                     }
                 }
                 Err(e) => println!("{}", e),

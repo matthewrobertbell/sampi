@@ -6,7 +6,7 @@ fn test_to_and_from_bytes() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.get_data()?, data);
+    assert_eq!(s.data, data);
 
     let bytes = s.to_bytes();
     assert_eq!(Sampi::from_bytes(&bytes)?.to_bytes()[2..], bytes[2..]);
@@ -18,7 +18,7 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.get_data()?, data);
+    assert_eq!(s.data, data);
 
     let mut bytes = s.to_bytes();
     let original_bytes_length = bytes.len();
@@ -35,7 +35,7 @@ fn test_to_and_from_base64() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.get_data()?, data);
+    assert_eq!(s.data, data);
 
     let base64 = s.to_base64();
     assert_eq!(Sampi::from_base64(&base64)?.to_base64()[6..], base64[6..]);
@@ -47,7 +47,7 @@ fn test_to_and_from_hex() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.get_data()?, data);
+    assert_eq!(s.data, data);
 
     let hex = s.to_hex();
     assert_eq!(Sampi::from_hex(&hex)?.to_hex()[4..], hex[4..]);
@@ -120,12 +120,12 @@ fn test_nesting() -> Result<()> {
     let kp = SampiKeyPair::new();
     let s_1 = kp.new_sampi().build(SampiData::Bytes(vec![1, 2, 3]))?;
     let s_2 = kp.new_sampi().build(SampiData::Bytes(s_1.to_bytes()))?;
-    if let SampiData::Bytes(bytes) = s_2.get_data()? {
+    if let SampiData::Bytes(bytes) = s_2.data {
         let s_3 = Sampi::from_bytes(&bytes)?;
-        assert_eq!(s_1.get_data()?, s_3.get_data()?);
-        assert_eq!(s_1.get_unix_time(), s_3.get_unix_time());
+        assert_eq!(s_1.data, s_3.data);
+        assert_eq!(s_1.unix_time, s_3.unix_time);
         assert_eq!(s_1.get_hash(), s_3.get_hash());
-        assert_eq!(s_3.get_data()?, SampiData::Bytes(vec![1, 2, 3]));
+        assert_eq!(s_3.data, SampiData::Bytes(vec![1, 2, 3]));
     }
 
     Ok(())
@@ -140,7 +140,7 @@ fn test_bincode_storage() -> Result<()> {
     let s_1 = kp.new_sampi().build(SampiData::Bytes(bincoded))?;
     let s_2 = Sampi::from_hex(&s_1.to_hex())?;
 
-    if let SampiData::Bytes(bytes) = s_2.get_data()? {
+    if let SampiData::Bytes(bytes) = s_2.data {
         let decoded_v = bincode::deserialize(&bytes)?;
         assert_eq!(v, decoded_v);
     }
@@ -160,10 +160,10 @@ fn test_ordering() -> Result<()> {
                 .unwrap()
         })
         .collect();
-    assert_eq!(sampis[0].get_unix_time(), 5);
+    assert_eq!(sampis[0].unix_time, 5);
     sampis.sort();
     assert_eq!(
-        sampis.iter().map(|s| s.get_unix_time()).collect::<Vec<_>>(),
+        sampis.iter().map(|s| s.unix_time).collect::<Vec<_>>(),
         (1..=5).collect::<Vec<_>>()
     );
     Ok(())

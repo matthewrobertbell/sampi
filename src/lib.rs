@@ -4,7 +4,8 @@ use std::fs::{create_dir, File};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::fmt;
+use std::io::{Read, Write};
+use std::path::PathBuf;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,7 +13,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base64::decode_config as base64_decode_config;
 use base64::encode_config as base64_encode_config;
 use bincode::{deserialize, serialize};
-use byteorder::{ByteOrder, LittleEndian};
 use dirs;
 use ed25519_dalek::{Keypair, PublicKey, Signature};
 use glob::glob;
@@ -22,8 +22,6 @@ use rand_core::OsRng;
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
-use std::io::{Read, Write};
-use std::path::PathBuf;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::Date;
@@ -40,12 +38,6 @@ pub enum SampiData {
     String(String),
     Bytes(Vec<u8>),
     SampiFilter(SampiFilter),
-}
-
-impl fmt::Display for SampiData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 pub struct SampiKeyPair {
@@ -174,7 +166,6 @@ impl<'a> SampiBuilder<'a> {
     }
 
     pub fn build(&self, data: SampiData) -> Result<Sampi> {
-        let data = bincode::serialize(&data)?;
         Sampi::new(
             data,
             self.min_pow_score,
@@ -183,54 +174,19 @@ impl<'a> SampiBuilder<'a> {
             self.threads_count,
         )
     }
-
-    pub fn build_from_reader<R: 'a + Read>(&'a self, mut r: R) -> impl Iterator<Item = Sampi> + 'a {
-        let mut count: u32 = 0;
-        let mut buf = [0; MAX_DATA_LENGTH];
-        let mut previous_hash = [0; 4];
-
-        let mut random_id = [0u8; 8];
-        OsRng.fill(&mut random_id);
-
-        std::iter::from_fn(move || match r.read(&mut buf) {
-            Ok(0) => None,
-            Ok(n) => {
-                count += 1;
-                dbg!(count);
-                dbg!(n);
-
-                let s = self
-                    .ss_keypair
-                    .new_sampi()
-                    .build(SampiData::Bytes(buf[0..n].to_vec()))
-                    .unwrap();
-
-                previous_hash.copy_from_slice(&s.get_hash_bytes()[..4]);
-
-                Some(s)
-            }
-            Err(_) => None,
-        })
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Sampi {
-    length: u16,
-    data: Vec<u8>,
-    unix_time: [u8; 6],
-    public_key: [u8; 32],
+    pub public_key: [u8; 32],
+    pub unix_time: u64,
+    pub data: SampiData,
     #[serde(with = "BigArray")]
     signature: [u8; 64],
     nonce: u64,
 }
 
 impl Sampi {
-    pub fn get_data(&self) -> Result<SampiData> {
-        bincode::deserialize::<SampiData>(&self.data)
-            .map_err(|_| "Cannot convert to SampiData".into())
-    }
-
     pub fn public_key_as_hex(&self) -> String {
         hex::encode(&self.public_key)
     }
@@ -242,47 +198,17 @@ impl Sampi {
         if bytes.len() > SAMPI_OVERHEAD + MAX_DATA_LENGTH {
             return Err("Deserialization input data is too large".into());
         }
-        let bytes = bytes.to_vec();
-        let length: u16 = deserialize(&bytes[..2])?;
-        let real_length = length & 0b0000_0011_1111_1111;
 
-        if real_length as usize > bytes.len() - SAMPI_OVERHEAD {
-            return Err("Deserialization input data is too small".into());
-        }
-
-        let serialized_real_length = serialize(&real_length).unwrap();
-        let mut length_array = [0; 8];
-        length_array[0] = serialized_real_length[0];
-        length_array[1] = serialized_real_length[1];
-
-        let mut new_bytes = Vec::with_capacity(bytes.len() + 8);
-        new_bytes.extend_from_slice(&bytes[..2]);
-        new_bytes.extend(&length_array);
-        new_bytes.extend_from_slice(&bytes[2..real_length as usize + SAMPI_OVERHEAD]);
-
-        Ok(deserialize(&new_bytes)?)
+        Ok(deserialize(&bytes)?)
     }
 
     fn serialize(&self) -> Vec<u8> {
-        let bytes = serialize(&self).unwrap().to_vec();
-
-        let mut new_bytes = Vec::with_capacity(bytes.len() - 8);
-        new_bytes.extend_from_slice(&bytes[..2]);
-        new_bytes.extend_from_slice(&bytes[10..]);
-
-        new_bytes
+        serialize(&self).unwrap()
     }
 
     fn validate(self, serialized_data: &[u8], min_pow_score: Option<u8>) -> Result<Self> {
-        let real_length = self.length & 0b0000_0011_1111_1111;
-        if self.data.len() > MAX_DATA_LENGTH {
+        if serialized_data.len() > MAX_DATA_LENGTH + SAMPI_OVERHEAD {
             return Err("Data too large".into());
-        }
-
-        let serialized_data = &serialized_data[..real_length as usize + SAMPI_OVERHEAD];
-
-        if real_length as usize + SAMPI_OVERHEAD != serialized_data.len() {
-            return Err("Length field doesn't match the serialized data length".into());
         }
 
         let signable_data = self.generate_signable_data();
@@ -368,11 +294,8 @@ impl Sampi {
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
-        let mut signable_data = self.data.to_owned().to_vec();
-
-        let original_length = self.length & 0b0000_0011_1111_1111;
-        signable_data.extend(serialize(&original_length).unwrap());
-        signable_data.extend(&self.unix_time);
+        let mut signable_data = serialize(&self.data).unwrap();
+        signable_data.extend(serialize(&self.unix_time).unwrap());
         signable_data.extend(&self.public_key);
         signable_data.extend(serialize(&self.nonce).unwrap());
 
@@ -383,11 +306,6 @@ impl Sampi {
     pub fn get_pow_score(&self) -> u8 {
         let signable_data = self.generate_signable_data();
         calculate_pow_score(&signable_data)
-    }
-
-    /// Get the unix time value
-    pub fn get_unix_time(&self) -> u64 {
-        LittleEndian::read_u48(&self.unix_time)
     }
 
     /// Get the SHA256 hash of the serialized bytes of this object, as a string
@@ -404,13 +322,14 @@ impl Sampi {
     }
 
     fn new(
-        data: Vec<u8>,
+        data: SampiData,
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
         unix_time: Option<u64>,
         threads_count: u64,
     ) -> Result<Self> {
-        if data.len() > MAX_DATA_LENGTH {
+        let mut signable_data = serialize(&data)?;
+        if signable_data.len() > MAX_DATA_LENGTH {
             return Err("Data too large".into());
         }
 
@@ -423,27 +342,15 @@ impl Sampi {
         #[cfg(target_arch = "wasm32")]
         let unix_time = std::cmp::min(unix_time.unwrap_or(Date::now() as u64), 2u64.pow(48) - 1);
 
-        let mut unix_time_array = [0; 6];
-        LittleEndian::write_u48(&mut unix_time_array, unix_time);
-
-        let mut signable_data = data.clone();
-
-        let original_length = data.len() as u16;
-        let mut length_mutation = LittleEndian::read_u16(&Sha512::digest(&data)[..2]);
-        length_mutation &= 0b1111_1100_0000_0000;
-        let length = length_mutation + data.len() as u16;
-
         let mut s = Sampi {
-            length,
-            unix_time: unix_time_array,
+            unix_time,
             public_key: keypair.keypair.public.to_bytes(),
             signature: [0; 64],
             nonce: 0,
             data,
         };
 
-        signable_data.extend(serialize(&original_length)?);
-        signable_data.extend(&unix_time_array);
+        signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
 
         let nonce = match min_pow_score {
@@ -491,7 +398,7 @@ impl Eq for Sampi {}
 
 impl Ord for Sampi {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.get_unix_time().cmp(&other.get_unix_time())
+        self.unix_time.cmp(&other.unix_time)
     }
 }
 
@@ -503,10 +410,9 @@ impl PartialOrd for Sampi {
 
 impl PartialEq for Sampi {
     fn eq(&self, other: &Self) -> bool {
-        self.get_unix_time() == other.get_unix_time()
+        self.unix_time == other.unix_time
             && self.data == other.data
             && self.public_key == other.public_key
-            && self.length == other.length
             && self.nonce == other.nonce
     }
 }
@@ -534,14 +440,14 @@ impl SampiFilter {
             }
         }
 
-        let unix_time = s.get_unix_time();
-        if unix_time < self.minimum_unix_time.unwrap_or(0)
-            || unix_time > self.maximum_unix_time.unwrap_or_else(|| 2u64.pow(48))
+        if s.unix_time < self.minimum_unix_time.unwrap_or(0)
+            || s.unix_time > self.maximum_unix_time.unwrap_or_else(|| 2u64.pow(48))
         {
             return false;
         }
 
-        let data_length = s.data.len() as u16;
+        let data_length = serialize(&s.data).unwrap().len() as u16;
+
         data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
 
