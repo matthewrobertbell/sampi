@@ -4,6 +4,7 @@ use std::fs::{create_dir, File};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
+use std::fmt;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -29,10 +30,23 @@ use js_sys::Date;
 
 big_array! { BigArray; }
 
-pub const MAX_DATA_LENGTH: usize = 900;
-const SAMPI_OVERHEAD: usize = 124;
+pub const MAX_DATA_LENGTH: usize = 912;
+const SAMPI_OVERHEAD: usize = 112;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub enum SampiData {
+    String(String),
+    Bytes(Vec<u8>),
+    SampiFilter(SampiFilter),
+}
+
+impl fmt::Display for SampiData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 pub struct SampiKeyPair {
     keypair: Keypair,
@@ -122,17 +136,15 @@ impl SampiKeyPair {
 
 #[derive(Clone)]
 pub struct SampiBuilder<'a> {
-    metadata: [u8; 16],
     min_pow_score: Option<u8>,
     ss_keypair: &'a SampiKeyPair,
     unix_time: Option<u64>,
-    threads_count: u32,
+    threads_count: u64,
 }
 
 impl<'a> SampiBuilder<'a> {
     fn new(ss_keypair: &'a SampiKeyPair) -> Self {
         SampiBuilder {
-            metadata: [0; 16],
             min_pow_score: None,
             ss_keypair,
             unix_time: None,
@@ -140,23 +152,13 @@ impl<'a> SampiBuilder<'a> {
         }
     }
 
-    pub fn with_metadata(mut self, metadata: [u8; 16]) -> Self {
-        self.metadata = metadata;
-        self
-    }
-
-    pub fn with_random_metadata(mut self) -> Self {
-        OsRng.fill(&mut self.metadata);
-        self
-    }
-
     pub fn with_pow(mut self, min_pow_score: u8) -> Self {
         self.min_pow_score = Some(min_pow_score);
-        self.threads_count = num_cpus::get() as u32;
+        self.threads_count = num_cpus::get() as u64;
         self
     }
 
-    pub fn with_pow_threads(mut self, threads_count: u32) -> Self {
+    pub fn with_pow_threads(mut self, threads_count: u64) -> Self {
         self.threads_count = threads_count;
         self
     }
@@ -171,10 +173,10 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn build(&self, data: impl Into<Vec<u8>>) -> Result<Sampi> {
+    pub fn build(&self, data: SampiData) -> Result<Sampi> {
+        let data = bincode::serialize(&data)?;
         Sampi::new(
-            data.into(),
-            self.metadata,
+            data,
             self.min_pow_score,
             &self.ss_keypair,
             self.unix_time,
@@ -186,7 +188,6 @@ impl<'a> SampiBuilder<'a> {
         let mut count: u32 = 0;
         let mut buf = [0; MAX_DATA_LENGTH];
         let mut previous_hash = [0; 4];
-        let mut metadata = [0; 16];
 
         let mut random_id = [0u8; 8];
         OsRng.fill(&mut random_id);
@@ -198,17 +199,10 @@ impl<'a> SampiBuilder<'a> {
                 dbg!(count);
                 dbg!(n);
 
-                metadata.copy_from_slice(
-                    serialize(&(random_id, count, previous_hash))
-                        .unwrap()
-                        .as_slice(),
-                );
-
                 let s = self
                     .ss_keypair
                     .new_sampi()
-                    .with_metadata(metadata)
-                    .build(&buf[0..n])
+                    .build(SampiData::Bytes(buf[0..n].to_vec()))
                     .unwrap();
 
                 previous_hash.copy_from_slice(&s.get_hash_bytes()[..4]);
@@ -223,24 +217,18 @@ impl<'a> SampiBuilder<'a> {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Sampi {
     length: u16,
-    pub data: Vec<u8>,
+    data: Vec<u8>,
     unix_time: [u8; 6],
-    pub metadata: [u8; 16],
     public_key: [u8; 32],
     #[serde(with = "BigArray")]
     signature: [u8; 64],
-    nonce: u32,
+    nonce: u64,
 }
 
 impl Sampi {
-    pub fn data_as_string(&self) -> Result<String> {
-        std::str::from_utf8(&self.data)
-            .map(|s| s.to_string())
-            .map_err(|_| "Not a valid UTF8 string".into())
-    }
-
-    pub fn data_as_hex(&self) -> String {
-        hex::encode(&self.data)
+    pub fn get_data(&self) -> Result<SampiData> {
+        bincode::deserialize::<SampiData>(&self.data)
+            .map_err(|_| "Cannot convert to SampiData".into())
     }
 
     pub fn public_key_as_hex(&self) -> String {
@@ -379,18 +367,12 @@ impl Sampi {
             .or_else(|_| Self::from_hex_with_pow_check(&data, min_pow_score))
     }
 
-    /// Get the metadata as a hex string
-    pub fn metadata_as_hex(&self) -> String {
-        hex::encode(&self.metadata)
-    }
-
     fn generate_signable_data(&self) -> Vec<u8> {
         let mut signable_data = self.data.to_owned().to_vec();
 
         let original_length = self.length & 0b0000_0011_1111_1111;
         signable_data.extend(serialize(&original_length).unwrap());
         signable_data.extend(&self.unix_time);
-        signable_data.extend(&self.metadata);
         signable_data.extend(&self.public_key);
         signable_data.extend(serialize(&self.nonce).unwrap());
 
@@ -423,11 +405,10 @@ impl Sampi {
 
     fn new(
         data: Vec<u8>,
-        metadata: [u8; 16],
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
         unix_time: Option<u64>,
-        threads_count: u32,
+        threads_count: u64,
     ) -> Result<Self> {
         if data.len() > MAX_DATA_LENGTH {
             return Err("Data too large".into());
@@ -455,7 +436,6 @@ impl Sampi {
         let mut s = Sampi {
             length,
             unix_time: unix_time_array,
-            metadata,
             public_key: keypair.keypair.public.to_bytes(),
             signature: [0; 64],
             nonce: 0,
@@ -464,7 +444,6 @@ impl Sampi {
 
         signable_data.extend(serialize(&original_length)?);
         signable_data.extend(&unix_time_array);
-        signable_data.extend(&metadata);
         signable_data.extend(keypair.keypair.public.as_bytes());
 
         let nonce = match min_pow_score {
@@ -524,11 +503,15 @@ impl PartialOrd for Sampi {
 
 impl PartialEq for Sampi {
     fn eq(&self, other: &Self) -> bool {
-        self.get_unix_time() == other.get_unix_time() && self.data == other.data && self.metadata == other.metadata && self.public_key == other.public_key && self.length == other.length && self.nonce == other.nonce
+        self.get_unix_time() == other.get_unix_time()
+            && self.data == other.data
+            && self.public_key == other.public_key
+            && self.length == other.length
+            && self.nonce == other.nonce
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
     pub public_key: Option<[u8; 32]>,
@@ -536,7 +519,6 @@ pub struct SampiFilter {
     pub maximum_unix_time: Option<u64>,
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
-    pub metadata: [Option<u8>; 16],
 }
 
 impl SampiFilter {
@@ -560,16 +542,7 @@ impl SampiFilter {
         }
 
         let data_length = s.data.len() as u16;
-        if data_length < self.minimum_data_length || data_length > self.maximum_data_length {
-            return false;
-        }
-
-        self.metadata
-            .iter()
-            .zip(s.metadata.iter())
-            .all(|(filter_byte, metadata_byte)| {
-                filter_byte.map(|f_b| f_b == *metadata_byte).unwrap_or(true)
-            })
+        data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
 
     /// Create a new SampiFilter, which will match all Sampi messages
@@ -581,7 +554,6 @@ impl SampiFilter {
             maximum_unix_time: None,
             minimum_data_length: 0,
             maximum_data_length: MAX_DATA_LENGTH as u16,
-            metadata: [None; 16],
         }
     }
 }
@@ -602,7 +574,7 @@ fn calculate_pow_score(signable_data: &[u8]) -> u8 {
     count as u8
 }
 
-fn find_nonce(min_pow_score: u8, mut signable_data: Vec<u8>) -> u32 {
+fn find_nonce(min_pow_score: u8, mut signable_data: Vec<u8>) -> u64 {
     signable_data.extend(vec![0; 4]);
     let signable_data_length = signable_data.len();
 
@@ -619,16 +591,16 @@ fn find_nonce(min_pow_score: u8, mut signable_data: Vec<u8>) -> u32 {
 }
 
 fn find_nonce_threaded(
-    start: u32,
-    offset: u32,
+    start: u64,
+    offset: u64,
     min_pow_score: u8,
     mut signable_data: Vec<u8>,
-    sender: &mpsc::Sender<u32>,
+    sender: &mpsc::Sender<u64>,
     solution_found: Arc<AtomicBool>,
 ) {
     signable_data.extend(vec![0; 4]);
     let signable_data_length = signable_data.len();
-    for (i, nonce) in (start..u32::max_value())
+    for (i, nonce) in (start..u64::max_value())
         .step_by(offset as usize)
         .enumerate()
     {

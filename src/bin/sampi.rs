@@ -59,14 +59,6 @@ enum Opt {
         #[structopt(short, long)]
         key: Option<String>,
 
-        /// Metadata, must be 32 hex characters, which is converted to 16 bytes of metadata
-        #[structopt(long)]
-        metadata: Option<HexData32>,
-
-        /// Use random metadata
-        #[structopt(long)]
-        random_metadata: bool,
-
         /// Use a random unix time, rather than the current unix time
         #[structopt(long)]
         random_unix_time: bool,
@@ -81,7 +73,7 @@ enum Opt {
 
         /// Number of threads to use for Proof of Work, default is the number of processor cores
         #[structopt(long)]
-        pow_threads: Option<u32>,
+        pow_threads: Option<u64>,
 
         /// Output as hex, instead of the default base64
         #[structopt(long)]
@@ -111,21 +103,9 @@ fn main() -> sampi::Result<()> {
                         println!("Public Key: {}", s.public_key_as_hex());
                         println!("UNIX Time: {}", s.get_unix_time());
                         println!("POW Score: {}", s.get_pow_score());
-                        println!("Metadata: {}", s.metadata_as_hex());
-
-                        if hex {
-                            print!("{}", hex::encode(&s.data))
-                        } else if let Ok(data_string) = s.data_as_string() {
-                            println!("Data: {}", data_string);
-                        } else {
-                            println!("Non-string data, {} bytes long", s.data.len());
-                        }
-                    } else if hex {
-                        print!("{}", hex::encode(&s.data))
-                    } else if let Ok(data_string) = s.data_as_string() {
-                        print!("{}", data_string);
-                    } else {
-                        println!("Non-string data, {} bytes long", s.data.len());
+                    }
+                    if hex {
+                        print!("{}", &s.to_hex());
                     }
                 }
                 Err(e) => println!("{}", e),
@@ -138,8 +118,6 @@ fn main() -> sampi::Result<()> {
         }
         Opt::Encode {
             key,
-            metadata,
-            random_metadata,
             random_unix_time,
             unix_time,
             pow,
@@ -163,14 +141,6 @@ fn main() -> sampi::Result<()> {
 
             let mut builder = kp.new_sampi();
 
-            if let Some(metadata) = metadata {
-                let mut metadata_array = [0; 16];
-                metadata_array.copy_from_slice(metadata.0.as_slice());
-                builder = builder.with_metadata(metadata_array);
-            }
-            if random_metadata {
-                builder = builder.with_random_metadata();
-            }
             if random_unix_time {
                 builder = builder.with_random_unix_time();
             }
@@ -184,7 +154,7 @@ fn main() -> sampi::Result<()> {
                 builder = builder.with_pow_threads(pow_threads);
             }
 
-            let s = builder.build(data.trim())?;
+            let s = builder.build(sampi::SampiData::String(data.trim().to_string()))?;
 
             if hex {
                 println!("{}", s.to_hex());

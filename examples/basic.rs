@@ -1,10 +1,10 @@
-use sampi::{Result, Sampi, SampiKeyPair};
+use sampi::{Result, Sampi, SampiData, SampiKeyPair};
 
 fn main() -> Result<()> {
     let kp = SampiKeyPair::new();
 
-    let data = "Hello World! 你好!";
-    let sampi = kp.new_sampi().build(data)?;
+    let data = "Hello World! 你好!".to_string();
+    let sampi = kp.new_sampi().build(SampiData::String(data))?;
 
     println!("Sampi size in bytes: {}", sampi.to_bytes().len());
     let base64_string = sampi.to_base64();
@@ -15,9 +15,6 @@ fn main() -> Result<()> {
     );
 
     let deserialized_sampi = Sampi::from_base64(&base64_string)?;
-    println!(
-        "Deserialized data as a string: '{}'",
-        deserialized_sampi.data_as_string().unwrap()
-    );
+    println!("Deserialized data: '{:?}' - type: {}", deserialized_sampi.get_data()?, deserialized_sampi.get_data()?.to_string());
     Ok(())
 }
