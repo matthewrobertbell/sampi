@@ -5,6 +5,7 @@ use hex;
 use structopt::StructOpt;
 
 use sampi;
+use sampi::SampiKeyPair;
 
 #[derive(Debug)]
 struct HexData64(Vec<u8>);
@@ -128,11 +129,11 @@ fn main() -> sampi::Result<()> {
             hex,
         } => {
             let kp = match key {
-                None => sampi::SampiKeyPair::new(),
+                None => Default::default(),
                 Some(key) => match sampi::SampiKeyPair::load_from_file(&key) {
                     Ok(kp) => kp,
                     Err(_) => {
-                        let kp = sampi::SampiKeyPair::new();
+                        let kp: SampiKeyPair = Default::default();
                         kp.save_to_file(&key)?;
                         kp
                     }

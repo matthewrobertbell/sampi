@@ -44,13 +44,15 @@ pub struct SampiKeyPair {
     keypair: Keypair,
 }
 
-impl SampiKeyPair {
-    pub fn new() -> Self {
+impl Default for SampiKeyPair {
+    fn default() -> Self {
         Self {
             keypair: Keypair::generate(&mut OsRng),
         }
     }
+}
 
+impl SampiKeyPair {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
             keypair: Keypair::from_bytes(bytes)
@@ -450,9 +452,11 @@ impl SampiFilter {
 
         data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
+}
 
+impl Default for SampiFilter {
     /// Create a new SampiFilter, which will match all Sampi messages
-    pub fn new() -> SampiFilter {
+    fn default() -> SampiFilter {
         SampiFilter {
             minimum_pow_score: 0,
             public_key: None,
