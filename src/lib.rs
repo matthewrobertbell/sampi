@@ -1,11 +1,11 @@
 use std::env;
 use std::error::Error;
 use std::fs::{create_dir, File};
+use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::io::{Read, Write};
-use std::path::PathBuf;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,6 +22,11 @@ use rand_core::OsRng;
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
+use std::string::ToString;
+
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 
 #[cfg(target_arch = "wasm32")]
 use js_sys::Date;
@@ -33,7 +38,7 @@ const SAMPI_OVERHEAD: usize = 112;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
 pub enum SampiData {
     String(String),
     Bytes(Vec<u8>),

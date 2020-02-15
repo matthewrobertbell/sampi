@@ -107,8 +107,7 @@ fn main() -> sampi::Result<()> {
                     }
                     if hex {
                         print!("{}", &s.to_hex());
-                    }
-                    else {
+                    } else {
                         print!("{:?}", &s.data);
                     }
                 }

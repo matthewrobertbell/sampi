@@ -1,7 +1,7 @@
 use sampi::{Result, Sampi, SampiData, SampiKeyPair};
 
 fn main() -> Result<()> {
-    let kp = SampiKeyPair::new();
+    let kp: SampiKeyPair = Default::default();
 
     let data = "Hello World! 你好!".to_string();
     let sampi = kp.new_sampi().build(SampiData::String(data))?;
@@ -16,5 +16,7 @@ fn main() -> Result<()> {
 
     let deserialized_sampi = Sampi::from_base64(&base64_string)?;
     println!("Deserialized data: {:?}", deserialized_sampi.data);
+
+    dbg!(deserialized_sampi.data.to_string());
     Ok(())
 }

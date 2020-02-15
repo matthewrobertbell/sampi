@@ -26,6 +26,8 @@ structopt = "0.3.0"
 hex = "0.3.2"
 dirs = "2.0.2"
 glob = "0.3.0"
+strum = "0.17.1"
+strum_macros = "0.17.1"
 js-sys = { version = "0.3.27", optional = true }
 
 [profile.release]
