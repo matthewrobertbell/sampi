@@ -108,7 +108,10 @@ fn main() -> sampi::Result<()> {
                     if hex {
                         print!("{}", &s.to_hex());
                     } else {
-                        print!("{:?}", &s.data);
+                        if let sampi::SampiData::String(string_data) = s.data {
+                            print!("{}", string_data);
+                        }
+
                     }
                 }
                 Err(e) => println!("{}", e),

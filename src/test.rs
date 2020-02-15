@@ -132,6 +132,17 @@ fn test_nesting() -> Result<()> {
 }
 
 #[test]
+fn test_embedded() -> Result<()> {
+    let kp: SampiKeyPair = Default::default();
+    let s_1 = kp.new_sampi().build(SampiData::Bytes(vec![1, 2, 3]))?;
+    let s_2 = kp.new_sampi().build(SampiData::Sampi(Box::new(s_1.clone())))?;
+
+    assert_eq!(SampiData::Sampi(Box::new(s_1)), s_2.data);
+
+    Ok(())
+}
+
+#[test]
 fn test_bincode_storage() -> Result<()> {
     let kp: SampiKeyPair = Default::default();
     let v = (1, 2.0, 'a');

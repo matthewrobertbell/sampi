@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
+use std::fmt;
+use std::string::ToString;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,7 +24,6 @@ use rand_core::OsRng;
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
-use std::string::ToString;
 
 extern crate strum;
 #[macro_use]
@@ -43,6 +44,7 @@ pub enum SampiData {
     String(String),
     Bytes(Vec<u8>),
     SampiFilter(SampiFilter),
+    Sampi(Box<Sampi>),
 }
 
 pub struct SampiKeyPair {
@@ -398,6 +400,12 @@ impl Sampi {
         s.nonce = nonce;
 
         Ok(s)
+    }
+}
+
+impl fmt::Debug for Sampi {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Sampi {{ data: {} }}", self.data)
     }
 }
 
