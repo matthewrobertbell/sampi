@@ -111,7 +111,6 @@ fn main() -> sampi::Result<()> {
                         if let sampi::SampiData::String(string_data) = s.data {
                             print!("{}", string_data);
                         }
-
                     }
                 }
                 Err(e) => println!("{}", e),

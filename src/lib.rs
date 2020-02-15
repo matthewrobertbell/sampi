@@ -1,13 +1,13 @@
 use std::env;
 use std::error::Error;
+use std::fmt;
 use std::fs::{create_dir, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::string::ToString;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::fmt;
-use std::string::ToString;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -41,8 +41,39 @@ pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'stati
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
 pub enum SampiData {
+    // Vecs of primitive types
+    U8Vec(Vec<u8>),
+    U16Vec(Vec<u16>),
+    U32Vec(Vec<u32>),
+    U64Vec(Vec<u64>),
+    U128Vec(Vec<u128>),
+    I8Vec(Vec<i8>),
+    I16Vec(Vec<i16>),
+    I32Vec(Vec<i32>),
+    I64Vec(Vec<i64>),
+    I128Vec(Vec<i128>),
+    F32Vec(Vec<f32>),
+    F64Vec(Vec<f64>),
+    BoolVec(Vec<bool>),
+    CharVec(Vec<char>),
+
+    // String aliases
     String(String),
+    JSON(String),
+    MD5(String),
+    SHA1(String),
+    SHA256(String),
+    SHA512(String),
+
+    // Vec of String alises
+    StringVec(Vec<String>),
+
+    // Vec<u8> aliases
     Bytes(Vec<u8>),
+    BSON(Vec<u8>),
+    CBOR(Vec<u8>),
+
+    // Sampi specific
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
 }
@@ -318,12 +349,12 @@ impl Sampi {
     }
 
     /// Get the SHA256 hash of the serialized bytes of this object, as a string
-    pub fn get_hash(&self) -> String {
+    pub fn get_hash_hex(&self) -> String {
         hex::encode(Sha256::digest(&self.to_bytes()))
     }
 
-    /// Get the SHA256 hash of the serialized bytes of this object, as a Vector of bytes
-    pub fn get_hash_bytes(&self) -> [u8; 32] {
+    /// Get the SHA256 hash of the serialized bytes of this object, as an array of bytes
+    pub fn get_hash(&self) -> [u8; 32] {
         let mut a = [0u8; 32];
         let h = Sha256::digest(&self.to_bytes());
         a.clone_from_slice(&h);
