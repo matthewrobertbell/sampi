@@ -136,8 +136,10 @@ fn test_embedded() -> Result<()> {
     let kp: SampiKeyPair = Default::default();
     let s_1 = kp.new_sampi().build(SampiData::Bytes(vec![1, 2, 3]))?;
     let s_2 = kp.new_sampi().build(SampiData::Sampi(Box::new(s_1.clone())))?;
+    assert_eq!(SampiData::Sampi(Box::new(s_1.clone())), s_2.data);
 
-    assert_eq!(SampiData::Sampi(Box::new(s_1)), s_2.data);
+    let s_3 = Sampi::from_base64(&s_2.to_base64())?;
+    assert_eq!(SampiData::Sampi(Box::new(s_1)), s_3.data);
 
     Ok(())
 }
