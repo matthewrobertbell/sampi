@@ -192,13 +192,14 @@ fn test_filtering() -> Result<()> {
         .map(|i| {
             kp.new_sampi()
                 .with_unix_time(i)
-                .build(SampiData::U8Vec(vec![]))
+                .build(SampiData::Bytes(vec![]))
                 .unwrap()
         })
         .collect();
 
     let mut filter: SampiFilter = Default::default();
     filter.maximum_unix_time = Some(3);
+    filter.data_variant = Some("Bytes".to_string());
 
     assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
     Ok(())

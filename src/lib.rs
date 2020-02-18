@@ -60,10 +60,6 @@ pub enum SampiData {
     // String aliases
     String(String),
     JSON(String),
-    MD5(String),
-    SHA1(String),
-    SHA256(String),
-    SHA512(String),
 
     // Vec of String alises
     StringVec(Vec<String>),
@@ -76,6 +72,11 @@ pub enum SampiData {
     // Sampi specific
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
+
+    // Vecs of byte arrays
+    Array8ByteVec(Vec<[u8; 8]>),
+    Array16ByteVec(Vec<[u8; 16]>),
+    Array32ByteVec(Vec<[u8; 32]>),
 }
 
 pub struct SampiKeyPair {
@@ -239,7 +240,7 @@ impl Sampi {
             return Err("Deserialization input data is too large".into());
         }
 
-        Ok(deserialize(&bytes)?)
+        deserialize(&bytes).map_err(|e| e.into())
     }
 
     fn serialize(&self) -> Vec<u8> {
@@ -471,6 +472,7 @@ pub struct SampiFilter {
     pub maximum_unix_time: Option<u64>,
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
+    pub data_variant: Option<String>,
 }
 
 impl SampiFilter {
@@ -492,8 +494,13 @@ impl SampiFilter {
             return false;
         }
 
-        let data_length = serialize(&s.data).unwrap().len() as u16;
+        if let Some(data_variant) = &self.data_variant {
+            if data_variant != &s.data.to_string() {
+                return false;
+            }
+        }
 
+        let data_length = serialize(&s.data).unwrap().len() as u16;
         data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
 }
@@ -508,6 +515,7 @@ impl Default for SampiFilter {
             maximum_unix_time: None,
             minimum_data_length: 0,
             maximum_data_length: MAX_DATA_LENGTH as u16,
+            data_variant: None,
         }
     }
 }
