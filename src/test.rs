@@ -14,6 +14,13 @@ fn test_to_and_from_bytes() -> Result<()> {
 }
 
 #[test]
+fn test_null_data_variant() -> Result<()> {
+    let kp: SampiKeyPair = Default::default();
+    let _ = kp.new_sampi().build(SampiData::Null)?;
+    Ok(())
+}
+
+#[test]
 fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
     let kp: SampiKeyPair = Default::default();
     let data = SampiData::String("Hello, World".to_string());
@@ -27,6 +34,8 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
         Sampi::from_bytes(&bytes)?.to_bytes()[2..],
         bytes[2..original_bytes_length]
     );
+    let s_from_bytes = Sampi::from_bytes(&bytes)?;
+    assert_eq!(s.data, s_from_bytes.data);
     Ok(())
 }
 
