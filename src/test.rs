@@ -45,6 +45,14 @@ fn test_to_and_from_base64() -> Result<()> {
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
     assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
+    assert_eq!(s.data.variant_name(), "String");
+
+    let data = SampiData::JSON("{'a': 5}".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
+    assert_eq!(s.data.variant_name(), "JSON");
 
     let base64 = s.to_base64();
     assert_eq!(Sampi::from_base64(&base64)?.to_base64()[6..], base64[6..]);

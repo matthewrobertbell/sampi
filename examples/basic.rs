@@ -15,8 +15,7 @@ fn main() -> Result<()> {
     );
 
     let deserialized_sampi = Sampi::from_base64(&base64_string)?;
-    println!("Deserialized data: {:?}", deserialized_sampi.data);
-
-    dbg!(deserialized_sampi.data.to_string());
+    println!("Deserialized data: {:?}", deserialized_sampi.data.human_readable());
+    println!("Data variant: {}", deserialized_sampi.data.variant_name());
     Ok(())
 }

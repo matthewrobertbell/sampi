@@ -81,6 +81,21 @@ pub enum SampiData {
     Array32ByteVec(Vec<[u8; 32]>),
 }
 
+impl SampiData {
+    pub fn human_readable(&self) -> String {
+        match &self {
+            SampiData::String(s) | SampiData::JSON(s) => format!("{}", s),
+            SampiData::Bytes(bytes) => format!("{:?}", bytes),
+            SampiData::Null => "Null".to_string(),
+            _ => "Unimplemented variant".to_string(),
+        }
+    }
+
+    pub fn variant_name(&self) -> String {
+        self.to_string()
+    }
+}
+
 pub struct SampiKeyPair {
     keypair: Keypair,
 }
@@ -230,6 +245,7 @@ pub struct Sampi {
 }
 
 impl Sampi {
+    /// Public key as a hex string
     pub fn public_key_as_hex(&self) -> String {
         hex::encode(&self.public_key)
     }
