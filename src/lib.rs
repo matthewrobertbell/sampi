@@ -236,9 +236,9 @@ impl<'a> SampiBuilder<'a> {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Sampi {
-    pub data: SampiData,
     pub public_key: [u8; 32],
     pub unix_time: u64,
+    pub data: SampiData,
     #[serde(with = "BigArray")]
     signature: [u8; 64],
     nonce: u64,
@@ -255,25 +255,15 @@ impl Sampi {
             return Err("Deserialization input data is too small".into());
         }
 
-        let data_length: u16 = deserialize(&bytes[2..4])?;
-        if data_length as usize > MAX_DATA_LENGTH {
-            return Err("Data length is too large".into());
+        if bytes.len() > SAMPI_OVERHEAD + MAX_DATA_LENGTH {
+            return Err("Deserialization input data is too large".into());
         }
 
-        let mut new_bytes = (&bytes[..data_length as usize + SAMPI_OVERHEAD]).to_vec();
-        new_bytes[2] = 0;
-        new_bytes[3] = 0;
-
-        deserialize(&new_bytes).map_err(|e| e.into())
+        deserialize(&bytes).map_err(|e| e.into())
     }
 
     fn serialize(&self) -> Vec<u8> {
-        let mut serialized = serialize(&self).unwrap();
-        let data_length = serialized.len() - SAMPI_OVERHEAD;
-        let serialized_length = serialize(&(data_length as u16)).unwrap();
-        serialized[2] = serialized_length[0];
-        serialized[3] = serialized_length[1];
-        serialized
+        serialize(&self).unwrap()
     }
 
     fn validate(self, serialized_data: &[u8], min_pow_score: Option<u8>) -> Result<Self> {
