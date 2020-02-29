@@ -267,7 +267,8 @@ impl Sampi {
         hex::encode(&self.public_key)
     }
 
-    fn deserialize(bytes: &[u8]) -> Result<Self> {
+    /// Attempt to deserialize a Sampi object from a slice of bytes
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < SAMPI_OVERHEAD {
             return Err("Deserialization input data is too small".into());
         }
@@ -289,7 +290,8 @@ impl Sampi {
         Ok(s)
     }
 
-    fn serialize(&self) -> Vec<u8> {
+    /// Serialize to a Vector of bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
         serialize(&self).unwrap()
     }
 
@@ -298,56 +300,46 @@ impl Sampi {
         let decoded = base58_string
             .from_base58()
             .map_err(|_| "Base58 Decoding Error".to_string())?;
-        Self::deserialize(&decoded)
+        Self::from_bytes(&decoded)
     }
 
     /// Serialize to a base58 string
     pub fn to_base58(&self) -> String {
-        self.serialize().to_base58()
+        self.to_bytes().to_base58()
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base32
     pub fn from_base32(base32_string: &str) -> Result<Self> {
         let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
             .ok_or_else(|| "Base32 Decoding Error".to_string())?;
-        Self::deserialize(&decoded)
+        Self::from_bytes(&decoded)
     }
 
     /// Serialize to a base32 string
     pub fn to_base32(&self) -> String {
-        base32_encode(Base32Alphabet::Crockford, &self.serialize())
+        base32_encode(Base32Alphabet::Crockford, &self.to_bytes())
     }
 
     /// Serialize to a base64 string
     pub fn to_base64(&self) -> String {
-        base64_encode_config(&self.serialize(), base64::URL_SAFE)
+        base64_encode_config(&self.to_bytes(), base64::URL_SAFE)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base64
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
-        Self::deserialize(&decoded)
+        Self::from_bytes(&decoded)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
     pub fn from_hex(hex_string: &str) -> Result<Self> {
         let decoded = hex::decode(hex_string)?;
-        Self::deserialize(&decoded)
+        Self::from_bytes(&decoded)
     }
 
     /// Serialize to a hex string
     pub fn to_hex(&self) -> String {
-        hex::encode(&self.serialize())
-    }
-
-    /// Attempt to deserialize a Sampi object from a slice of bytes
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Self::deserialize(&bytes)
-    }
-
-    /// Serialize to a Vector of bytes
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.serialize()
+        hex::encode(&self.to_bytes())
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
