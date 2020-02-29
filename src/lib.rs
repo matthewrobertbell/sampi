@@ -24,6 +24,7 @@ use glob::glob;
 use hex;
 use rand::Rng;
 use rand_core::OsRng;
+use rust_base58::{FromBase58, ToBase58};
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
@@ -296,15 +297,28 @@ impl Sampi {
         Ok(self)
     }
 
+    /// Attempt to deserialize a Sampi object from a &str of base58
+    pub fn from_base58(base58_string: &str) -> Result<Self> {
+        let decoded = base58_string
+            .from_base58()
+            .map_err(|_| "Base8 Decoding Error".to_string())?;
+        Self::deserialize(&decoded)?.validate(&decoded)
+    }
+
+    /// Serialize to a base64 string
+    pub fn to_base64(&self) -> String {
+        base64_encode_config(&self.serialize(), base64::URL_SAFE)
+    }
+
     /// Attempt to deserialize a Sampi object from a &str of base64
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
         Self::deserialize(&decoded)?.validate(&decoded)
     }
 
-    /// Serialize this Sampi object to a base64 string
-    pub fn to_base64(&self) -> String {
-        base64_encode_config(&self.serialize(), base64::URL_SAFE)
+    /// Serialize to a base58 string
+    pub fn to_base58(&self) -> String {
+        self.serialize().to_base58()
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
@@ -313,7 +327,7 @@ impl Sampi {
         Self::deserialize(&decoded)?.validate(&decoded)
     }
 
-    /// Serialize this Sampi object to a hex string
+    /// Serialize to a hex string
     pub fn to_hex(&self) -> String {
         hex::encode(&self.serialize())
     }
@@ -323,7 +337,7 @@ impl Sampi {
         Self::deserialize(&bytes)?.validate(&bytes)
     }
 
-    /// Serialize this Sampi object to a Vector of bytes
+    /// Serialize to a Vector of bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         self.serialize()
     }
