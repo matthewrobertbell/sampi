@@ -14,6 +14,18 @@ fn test_to_and_from_bytes() -> Result<()> {
 }
 
 #[test]
+fn test_from_str_parse() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+
+    let s_2: Sampi = s.to_base64().parse()?;
+    assert_eq!(s.data, s_2.data);
+    Ok(())
+}
+
+#[test]
 fn test_null_data_variant() -> Result<()> {
     let kp = SampiKeyPair::new();
     let _ = kp.new_sampi().build(SampiData::Null)?;
@@ -99,9 +111,8 @@ fn test_pow() -> Result<()> {
         .build(SampiData::U8Vec(vec![]))?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
-    assert!(Sampi::from_base64(&base64).is_ok());
-    assert!(Sampi::from_base64_with_pow_check(&base64, 0).is_ok());
-    assert!(Sampi::from_base64_with_pow_check(&base64, 250).is_err());
+    let s_2 = Sampi::from_base64(&base64)?;
+    assert!(s_2.get_pow_score() >= 20);
     Ok(())
 }
 
@@ -115,9 +126,8 @@ fn test_one_thread_pow() -> Result<()> {
         .build(SampiData::U8Vec(vec![]))?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
-    assert!(Sampi::from_base64(&base64).is_ok());
-    assert!(Sampi::from_base64_with_pow_check(&base64, 0).is_ok());
-    assert!(Sampi::from_base64_with_pow_check(&base64, 250).is_err());
+    let s_2 = Sampi::from_base64(&base64)?;
+    assert!(s_2.get_pow_score() >= 20);
     Ok(())
 }
 

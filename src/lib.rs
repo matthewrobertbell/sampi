@@ -6,6 +6,7 @@ use std::fmt;
 use std::fs::{create_dir, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -246,6 +247,15 @@ pub struct Sampi {
     nonce: u64,
 }
 
+impl FromStr for Sampi {
+    type Err = Box<dyn Error + Send + Sync + 'static>;
+
+    /// Attempt to deserialize from a string of either base64 or hex
+    fn from_str(data: &str) -> std::result::Result<Self, Self::Err> {
+        Self::from_base64(&data).or_else(|_| Self::from_hex(&data))
+    }
+}
+
 impl Sampi {
     /// Public key as a hex string
     pub fn public_key_as_hex(&self) -> String {
@@ -268,20 +278,12 @@ impl Sampi {
         serialize(&self).unwrap()
     }
 
-    fn validate(self, serialized_data: &[u8], min_pow_score: Option<u8>) -> Result<Self> {
+    fn validate(self, serialized_data: &[u8]) -> Result<Self> {
         if serialized_data.len() > MAX_DATA_LENGTH + SAMPI_OVERHEAD {
             return Err("Data too large".into());
         }
 
         let signable_data = self.generate_signable_data();
-
-        if let Some(min_pow_score) = min_pow_score {
-            let pow_score = calculate_pow_score(&signable_data);
-
-            if pow_score < min_pow_score {
-                return Err("Hash too small".into());
-            }
-        }
 
         let public_key =
             PublicKey::from_bytes(&self.public_key).map_err(|_| "Validation Error".to_string())?;
@@ -297,16 +299,10 @@ impl Sampi {
     /// Attempt to deserialize a Sampi object from a &str of base64
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
-        let s: Sampi = Self::deserialize(&decoded)?;
-        s.validate(&decoded, None)
+        Self::deserialize(&decoded)?.validate(&decoded)
     }
 
-    pub fn from_base64_with_pow_check(base64_string: &str, min_pow_score: u8) -> Result<Self> {
-        let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
-        let s: Sampi = Self::deserialize(&decoded)?;
-        s.validate(&decoded, Some(min_pow_score))
-    }
-
+    /// Serialize this Sampi object to a base64 string
     pub fn to_base64(&self) -> String {
         base64_encode_config(&self.serialize(), base64::URL_SAFE)
     }
@@ -314,14 +310,7 @@ impl Sampi {
     /// Attempt to deserialize a Sampi object from a &str of hex
     pub fn from_hex(hex_string: &str) -> Result<Self> {
         let decoded = hex::decode(hex_string)?;
-        let s: Sampi = Self::deserialize(&decoded)?;
-        s.validate(&decoded, None)
-    }
-
-    pub fn from_hex_with_pow_check(hex_string: &str, min_pow_score: u8) -> Result<Self> {
-        let decoded = hex::decode(hex_string)?;
-        let s: Sampi = Self::deserialize(&decoded)?;
-        s.validate(&decoded, Some(min_pow_score))
+        Self::deserialize(&decoded)?.validate(&decoded)
     }
 
     /// Serialize this Sampi object to a hex string
@@ -331,28 +320,12 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let s: Sampi = Self::deserialize(&bytes)?;
-        s.validate(&bytes, None)
-    }
-
-    pub fn from_bytes_with_pow_check(bytes: &[u8], min_pow_score: u8) -> Result<Self> {
-        let s: Sampi = Self::deserialize(&bytes)?;
-        s.validate(&bytes, Some(min_pow_score))
+        Self::deserialize(&bytes)?.validate(&bytes)
     }
 
     /// Serialize this Sampi object to a Vector of bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         self.serialize()
-    }
-
-    /// Attempt to deserialize from a string of either base64 or hex
-    pub fn from_str(data: &str) -> Result<Self> {
-        Self::from_base64(&data).or_else(|_| Self::from_hex(&data))
-    }
-
-    pub fn from_str_with_pow_check(data: &str, min_pow_score: u8) -> Result<Self> {
-        Self::from_base64_with_pow_check(&data, min_pow_score)
-            .or_else(|_| Self::from_hex_with_pow_check(&data, min_pow_score))
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
