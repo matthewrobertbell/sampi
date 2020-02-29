@@ -1,3 +1,5 @@
+#![allow(clippy::new_without_default)]
+
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -84,7 +86,7 @@ pub enum SampiData {
 impl SampiData {
     pub fn human_readable(&self) -> String {
         match &self {
-            SampiData::String(s) | SampiData::JSON(s) => format!("{}", s),
+            SampiData::String(s) | SampiData::JSON(s) => s.to_string(),
             SampiData::Bytes(bytes) => format!("{:?}", bytes),
             SampiData::Null => "Null".to_string(),
             _ => "Unimplemented variant".to_string(),
@@ -100,8 +102,8 @@ pub struct SampiKeyPair {
     keypair: Keypair,
 }
 
-impl Default for SampiKeyPair {
-    fn default() -> Self {
+impl SampiKeyPair {
+    pub fn new() -> Self {
         Self {
             keypair: Keypair::generate(&mut OsRng),
         }
@@ -522,11 +524,8 @@ impl SampiFilter {
         let data_length = serialize(&s.data).unwrap().len() as u16;
         data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
-}
-
-impl Default for SampiFilter {
     /// Create a new SampiFilter, which will match all Sampi messages
-    fn default() -> SampiFilter {
+    pub fn new() -> SampiFilter {
         SampiFilter {
             minimum_pow_score: 0,
             public_key: None,

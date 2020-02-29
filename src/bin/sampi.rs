@@ -107,10 +107,8 @@ fn main() -> sampi::Result<()> {
                     }
                     if hex {
                         print!("{}", &s.to_hex());
-                    } else {
-                        if let sampi::SampiData::String(string_data) = s.data {
-                            print!("{}", string_data);
-                        }
+                    } else if let sampi::SampiData::String(string_data) = s.data {
+                        print!("{}", string_data);
                     }
                 }
                 Err(e) => println!("{}", e),
@@ -130,11 +128,11 @@ fn main() -> sampi::Result<()> {
             hex,
         } => {
             let kp = match key {
-                None => Default::default(),
+                None => SampiKeyPair::new(),
                 Some(key) => match sampi::SampiKeyPair::load_from_file(&key) {
                     Ok(kp) => kp,
                     Err(_) => {
-                        let kp: SampiKeyPair = Default::default();
+                        let kp = SampiKeyPair::new();
                         kp.save_to_file(&key)?;
                         kp
                     }
