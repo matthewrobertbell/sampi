@@ -262,11 +262,6 @@ impl FromStr for Sampi {
 }
 
 impl Sampi {
-    /// Public key as a hex string
-    pub fn public_key_as_hex(&self) -> String {
-        hex::encode(&self.public_key)
-    }
-
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < SAMPI_OVERHEAD {
@@ -295,17 +290,15 @@ impl Sampi {
         serialize(&self).unwrap()
     }
 
-    /// Attempt to deserialize a Sampi object from a &str of base58
-    pub fn from_base58(base58_string: &str) -> Result<Self> {
-        let decoded = base58_string
-            .from_base58()
-            .map_err(|_| "Base58 Decoding Error".to_string())?;
+    /// Attempt to deserialize a Sampi object from a &str of hex
+    pub fn from_hex(hex_string: &str) -> Result<Self> {
+        let decoded = hex::decode(hex_string)?;
         Self::from_bytes(&decoded)
     }
 
-    /// Serialize to a base58 string
-    pub fn to_base58(&self) -> String {
-        self.to_bytes().to_base58()
+    /// Serialize to a hex string
+    pub fn to_hex(&self) -> String {
+        hex::encode(&self.to_bytes())
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base32
@@ -320,6 +313,19 @@ impl Sampi {
         base32_encode(Base32Alphabet::Crockford, &self.to_bytes())
     }
 
+    /// Attempt to deserialize a Sampi object from a &str of base58
+    pub fn from_base58(base58_string: &str) -> Result<Self> {
+        let decoded = base58_string
+            .from_base58()
+            .map_err(|_| "Base58 Decoding Error".to_string())?;
+        Self::from_bytes(&decoded)
+    }
+
+    /// Serialize to a base58 string
+    pub fn to_base58(&self) -> String {
+        self.to_bytes().to_base58()
+    }
+
     /// Serialize to a base64 string
     pub fn to_base64(&self) -> String {
         base64_encode_config(&self.to_bytes(), base64::URL_SAFE)
@@ -329,17 +335,6 @@ impl Sampi {
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
         Self::from_bytes(&decoded)
-    }
-
-    /// Attempt to deserialize a Sampi object from a &str of hex
-    pub fn from_hex(hex_string: &str) -> Result<Self> {
-        let decoded = hex::decode(hex_string)?;
-        Self::from_bytes(&decoded)
-    }
-
-    /// Serialize to a hex string
-    pub fn to_hex(&self) -> String {
-        hex::encode(&self.to_bytes())
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
@@ -357,8 +352,13 @@ impl Sampi {
         calculate_pow_score(&signable_data)
     }
 
+    /// Public key as a hex string
+    pub fn get_public_key_as_hex(&self) -> String {
+        hex::encode(&self.public_key)
+    }
+
     /// Get the SHA256 hash of the serialized bytes of this object, as a string
-    pub fn get_hash_hex(&self) -> String {
+    pub fn get_hash_as_hex(&self) -> String {
         hex::encode(Sha256::digest(&self.to_bytes()))
     }
 
