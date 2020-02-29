@@ -96,12 +96,12 @@ fn main() -> sampi::Result<()> {
                     if !acceptable_public_keys.is_empty()
                         && !acceptable_public_keys
                             .iter()
-                            .any(|k| hex::encode(&k.0) == s.public_key_as_hex())
+                            .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
                     {
                         return Err("Not an acceptable public key".into());
                     }
                     if verbose {
-                        println!("Public Key: {}", s.public_key_as_hex());
+                        println!("Public Key: {}", s.get_public_key_as_hex());
                         println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
                     }
