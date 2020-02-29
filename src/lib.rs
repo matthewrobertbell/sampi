@@ -276,29 +276,21 @@ impl Sampi {
             return Err("Deserialization input data is too large".into());
         }
 
-        deserialize(&bytes).map_err(|e| e.into())
+        let s: Sampi = deserialize(&bytes)?;
+        let signable_data = s.generate_signable_data();
+
+        let public_key =
+            PublicKey::from_bytes(&s.public_key).map_err(|_| "Validation Error".to_string())?;
+        let signature =
+            Signature::from_bytes(&s.signature).map_err(|_| "Validation Error".to_string())?;
+        public_key
+            .verify(&signable_data, &signature)
+            .map_err(|_| "Validation Error".to_string())?;
+        Ok(s)
     }
 
     fn serialize(&self) -> Vec<u8> {
         serialize(&self).unwrap()
-    }
-
-    fn validate(self, serialized_data: &[u8]) -> Result<Self> {
-        if serialized_data.len() > MAX_DATA_LENGTH + SAMPI_OVERHEAD {
-            return Err("Data too large".into());
-        }
-
-        let signable_data = self.generate_signable_data();
-
-        let public_key =
-            PublicKey::from_bytes(&self.public_key).map_err(|_| "Validation Error".to_string())?;
-        let signature =
-            Signature::from_bytes(&self.signature).map_err(|_| "Validation Error".to_string())?;
-        public_key
-            .verify(&signable_data, &signature)
-            .map_err(|_| "Validation Error".to_string())?;
-
-        Ok(self)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base58
@@ -306,7 +298,7 @@ impl Sampi {
         let decoded = base58_string
             .from_base58()
             .map_err(|_| "Base58 Decoding Error".to_string())?;
-        Self::deserialize(&decoded)?.validate(&decoded)
+        Self::deserialize(&decoded)
     }
 
     /// Serialize to a base58 string
@@ -318,7 +310,7 @@ impl Sampi {
     pub fn from_base32(base32_string: &str) -> Result<Self> {
         let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
             .ok_or_else(|| "Base32 Decoding Error".to_string())?;
-        Self::deserialize(&decoded)?.validate(&decoded)
+        Self::deserialize(&decoded)
     }
 
     /// Serialize to a base32 string
@@ -334,13 +326,13 @@ impl Sampi {
     /// Attempt to deserialize a Sampi object from a &str of base64
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
-        Self::deserialize(&decoded)?.validate(&decoded)
+        Self::deserialize(&decoded)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
     pub fn from_hex(hex_string: &str) -> Result<Self> {
         let decoded = hex::decode(hex_string)?;
-        Self::deserialize(&decoded)?.validate(&decoded)
+        Self::deserialize(&decoded)
     }
 
     /// Serialize to a hex string
@@ -350,7 +342,7 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Self::deserialize(&bytes)?.validate(&bytes)
+        Self::deserialize(&bytes)
     }
 
     /// Serialize to a Vector of bytes
