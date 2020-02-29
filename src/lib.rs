@@ -15,6 +15,7 @@ use std::thread;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use base32::{decode as base32_decode, encode as base32_encode, Alphabet as Base32Alphabet};
 use base64::decode_config as base64_decode_config;
 use base64::encode_config as base64_encode_config;
 use bincode::{deserialize, serialize};
@@ -301,8 +302,25 @@ impl Sampi {
     pub fn from_base58(base58_string: &str) -> Result<Self> {
         let decoded = base58_string
             .from_base58()
-            .map_err(|_| "Base8 Decoding Error".to_string())?;
+            .map_err(|_| "Base58 Decoding Error".to_string())?;
         Self::deserialize(&decoded)?.validate(&decoded)
+    }
+
+    /// Serialize to a base58 string
+    pub fn to_base58(&self) -> String {
+        self.serialize().to_base58()
+    }
+
+    /// Attempt to deserialize a Sampi object from a &str of base32
+    pub fn from_base32(base32_string: &str) -> Result<Self> {
+        let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
+            .ok_or_else(|| "Base32 Decoding Error".to_string())?;
+        Self::deserialize(&decoded)?.validate(&decoded)
+    }
+
+    /// Serialize to a base32 string
+    pub fn to_base32(&self) -> String {
+        base32_encode(Base32Alphabet::Crockford, &self.serialize())
     }
 
     /// Serialize to a base64 string
@@ -314,11 +332,6 @@ impl Sampi {
     pub fn from_base64(base64_string: &str) -> Result<Self> {
         let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
         Self::deserialize(&decoded)?.validate(&decoded)
-    }
-
-    /// Serialize to a base58 string
-    pub fn to_base58(&self) -> String {
-        self.serialize().to_base58()
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
