@@ -252,9 +252,12 @@ pub struct Sampi {
 impl FromStr for Sampi {
     type Err = Box<dyn Error + Send + Sync + 'static>;
 
-    /// Attempt to deserialize from a string of either base64 or hex
+    /// Attempt to deserialize from a string of base64, base58 or base32, or hex
     fn from_str(data: &str) -> std::result::Result<Self, Self::Err> {
-        Self::from_base64(&data).or_else(|_| Self::from_hex(&data))
+        Self::from_base64(&data)
+            .or_else(|_| Self::from_base58(&data))
+            .or_else(|_| Self::from_base32(&data))
+            .or_else(|_| Self::from_hex(&data))
     }
 }
 
