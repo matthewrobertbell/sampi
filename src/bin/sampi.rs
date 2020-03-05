@@ -35,6 +35,34 @@ impl FromStr for HexData32 {
     }
 }
 
+#[derive(Debug)]
+enum OutputType {
+    Hex,
+    Base32,
+    Base58,
+    Base64
+}
+
+impl FromStr for OutputType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Hex" => Ok(OutputType::Hex),
+            "Base16" => Ok(OutputType::Hex),
+            "Base32" => Ok(OutputType::Base32),
+            "Base58" => Ok(OutputType::Base58),
+            "Base64" => Ok(OutputType::Base64),
+            "hex" => Ok(OutputType::Hex),
+            "base16" => Ok(OutputType::Hex),
+            "base32" => Ok(OutputType::Base32),
+            "base58" => Ok(OutputType::Base58),
+            "base64" => Ok(OutputType::Base64),
+            _ => Err("Not a valid output type".to_string())
+        }
+    }
+}
+
 #[derive(StructOpt, Debug)]
 #[structopt(name = "Sampi")]
 enum Opt {
@@ -48,10 +76,6 @@ enum Opt {
 
         #[structopt(short, long)]
         acceptable_public_keys: Vec<HexData64>,
-
-        /// Output as hex, instead of as a string
-        #[structopt(long)]
-        hex: bool,
     },
 
     #[structopt(name = "encode")]
@@ -76,9 +100,8 @@ enum Opt {
         #[structopt(long)]
         pow_threads: Option<u64>,
 
-        /// Output as hex, instead of the default base64
         #[structopt(long)]
-        hex: bool,
+        output_type: OutputType
     },
 }
 
@@ -87,7 +110,6 @@ fn main() -> sampi::Result<()> {
         Opt::Decode {
             verbose,
             acceptable_public_keys,
-            hex,
         } => {
             let mut data = String::new();
             io::stdin().read_to_string(&mut data)?;
@@ -95,8 +117,8 @@ fn main() -> sampi::Result<()> {
                 Ok(s) => {
                     if !acceptable_public_keys.is_empty()
                         && !acceptable_public_keys
-                            .iter()
-                            .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
+                        .iter()
+                        .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
                     {
                         return Err("Not an acceptable public key".into());
                     }
@@ -105,11 +127,10 @@ fn main() -> sampi::Result<()> {
                         println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
                     }
-                    if hex {
-                        print!("{}", &s.to_hex());
-                    } else if let sampi::SampiData::String(string_data) = s.data {
+                    if let sampi::SampiData::String(string_data) = s.data {
                         print!("{}", string_data);
                     }
+
                 }
                 Err(e) => println!("{}", e),
             }
@@ -125,7 +146,7 @@ fn main() -> sampi::Result<()> {
             unix_time,
             pow,
             pow_threads,
-            hex,
+            output_type,
         } => {
             let kp = match key {
                 None => SampiKeyPair::new(),
@@ -159,10 +180,8 @@ fn main() -> sampi::Result<()> {
 
             let s = builder.build(sampi::SampiData::String(data.trim().to_string()))?;
 
-            if hex {
-                println!("{}", s.to_hex());
-            } else {
-                println!("{}", s.to_base64());
+            match output_type {
+                _ => { println!("{}", s.to_hex()); }
             }
         }
     }
