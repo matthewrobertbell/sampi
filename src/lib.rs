@@ -486,7 +486,7 @@ pub struct SampiFilter {
 impl SampiFilter {
     /// Test whether a given Sampi Message matches this filter
     pub fn matches(&self, s: &Sampi) -> bool {
-        if self.minimum_pow_score || s.get_pow_score() < self.minimum_pow_score {
+        if self.minimum_pow_score == 0 || s.get_pow_score() < self.minimum_pow_score {
             return false;
         }
 
