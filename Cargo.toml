@@ -1,6 +1,6 @@
 [package]
 name = "sampi"
-version = "0.1.19"
+version = "0.1.20"
 authors = ["Matt"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/matthewrobertbell/sampi"
 description = "Sampi is a serialization format, for 0 - 900 bytes of data, with a digital signature, timestamp and optional Proof of Work"
 
 [features]
-wasm = ["rand/wasm-bindgen", "js-sys"]
+wasm = ["ed25519-dalek/nightly", "rand/wasm-bindgen", "js-sys"]
 
 [dependencies]
 ed25519-dalek = "1.0.0-pre.1"
