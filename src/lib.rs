@@ -40,7 +40,7 @@ use js_sys::Date;
 big_array! { BigArray; }
 
 pub const MAX_DATA_LENGTH: usize = 912;
-const SAMPI_OVERHEAD: usize = 112;
+pub const SAMPI_OVERHEAD: usize = 112;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -486,7 +486,7 @@ pub struct SampiFilter {
 impl SampiFilter {
     /// Test whether a given Sampi Message matches this filter
     pub fn matches(&self, s: &Sampi) -> bool {
-        if s.get_pow_score() < self.minimum_pow_score {
+        if self.minimum_pow_score || s.get_pow_score() < self.minimum_pow_score {
             return false;
         }
 
