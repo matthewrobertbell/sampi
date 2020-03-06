@@ -403,6 +403,7 @@ impl Sampi {
         signable_data.extend(keypair.keypair.public.as_bytes());
 
         let nonce = match min_pow_score {
+            Some(min_pow_score) if min_pow_score == 0 => 0,
             Some(min_pow_score) => {
                 if threads_count == 1 {
                     find_nonce(min_pow_score, signable_data.clone())
@@ -486,7 +487,7 @@ pub struct SampiFilter {
 impl SampiFilter {
     /// Test whether a given Sampi Message matches this filter
     pub fn matches(&self, s: &Sampi) -> bool {
-        if self.minimum_pow_score == 0 || s.get_pow_score() < self.minimum_pow_score {
+        if self.minimum_pow_score != 0 && s.get_pow_score() < self.minimum_pow_score {
             return false;
         }
 
