@@ -126,6 +126,7 @@ fn main() -> sampi::Result<()> {
                         println!("Public Key: {}", s.get_public_key_as_hex());
                         println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
+                        println!("Data Variant Name: {}", s.data.variant_name());
                     }
                     if let sampi::SampiData::String(string_data) = s.data {
                         print!("{}", string_data);
