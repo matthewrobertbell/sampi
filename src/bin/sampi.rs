@@ -40,7 +40,7 @@ enum OutputType {
     Hex,
     Base32,
     Base58,
-    Base64
+    Base64,
 }
 
 impl FromStr for OutputType {
@@ -58,7 +58,7 @@ impl FromStr for OutputType {
             "base32" => Ok(OutputType::Base32),
             "base58" => Ok(OutputType::Base58),
             "base64" => Ok(OutputType::Base64),
-            _ => Err("Not a valid output type".to_string())
+            _ => Err("Not a valid output type".to_string()),
         }
     }
 }
@@ -101,7 +101,7 @@ enum Opt {
         pow_threads: Option<u64>,
 
         #[structopt(long)]
-        output_type: OutputType
+        output_type: OutputType,
     },
 }
 
@@ -117,8 +117,8 @@ fn main() -> sampi::Result<()> {
                 Ok(s) => {
                     if !acceptable_public_keys.is_empty()
                         && !acceptable_public_keys
-                        .iter()
-                        .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
+                            .iter()
+                            .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
                     {
                         return Err("Not an acceptable public key".into());
                     }
@@ -131,7 +131,6 @@ fn main() -> sampi::Result<()> {
                     if let sampi::SampiData::String(string_data) = s.data {
                         print!("{}", string_data);
                     }
-
                 }
                 Err(e) => println!("{}", e),
             }
@@ -182,7 +181,9 @@ fn main() -> sampi::Result<()> {
             let s = builder.build(sampi::SampiData::String(data.trim().to_string()))?;
 
             match output_type {
-                _ => { println!("{}", s.to_hex()); }
+                _ => {
+                    println!("{}", s.to_hex());
+                }
             }
         }
     }
