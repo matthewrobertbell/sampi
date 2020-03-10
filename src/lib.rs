@@ -306,7 +306,7 @@ impl Sampi {
         let mut serialized = serialize(&self).unwrap();
         let data_length = serialized.len() - SAMPI_OVERHEAD;
         let serialized_length = serialize(&(data_length as u16)).unwrap();
-        serialized[41] = CURRENT_SAMPI_FORMAT_VERSION;
+        serialized[41] = self.version;
         serialized[42] = serialized_length[0];
         serialized[43] = serialized_length[1];
         serialized
