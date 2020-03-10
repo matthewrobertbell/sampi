@@ -9,7 +9,10 @@ fn test_to_and_from_bytes() -> Result<()> {
     assert_eq!(s.data, data);
 
     let bytes = s.to_bytes();
-    assert_eq!(Sampi::from_bytes(&bytes)?.to_bytes()[2..], bytes[2..]);
+    let derialized_s = Sampi::from_bytes(&bytes)?;
+    assert_eq!(derialized_s.to_bytes()[2..], bytes[2..]);
+    assert_eq!(s.serialized_length, derialized_s.serialized_length);
+    assert_eq!(s.serialized_length, bytes.len() as u16);
     Ok(())
 }
 
