@@ -301,6 +301,17 @@ impl Sampi {
         Ok(s)
     }
 
+    /// Attempt to deserialize multiple Sampi objects from a slice of bytes
+    pub fn from_bytes_iterator(bytes: &[u8]) -> impl Iterator<Item = Self> + '_ {
+        let mut bytes_offset = 0;
+        std::iter::from_fn(move || {
+            Self::from_bytes(&bytes[bytes_offset..]).ok().map(|s| {
+                bytes_offset += s.serialized_length as usize;
+                s
+            })
+        })
+    }
+
     /// Serialize to a Vector of bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut serialized = serialize(&self).unwrap();

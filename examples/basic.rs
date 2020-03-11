@@ -20,5 +20,11 @@ fn main() -> Result<()> {
         deserialized_sampi.data.human_readable()
     );
     println!("Data variant: {}", deserialized_sampi.data.variant_name());
+
+    let bytes = sampi.to_bytes().repeat(5);
+    dbg!(bytes.len());
+
+    dbg!(Sampi::from_bytes_iterator(&bytes).collect::<Vec<_>>());
+
     Ok(())
 }
