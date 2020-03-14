@@ -37,7 +37,7 @@ impl FromStr for HexData32 {
 
 #[derive(Debug)]
 enum OutputType {
-    Hex,
+    Base16,
     Base32,
     Base58,
     Base64,
@@ -48,13 +48,13 @@ impl FromStr for OutputType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Hex" => Ok(OutputType::Hex),
-            "Base16" => Ok(OutputType::Hex),
+            "Hex" => Ok(OutputType::Base16),
+            "Base16" => Ok(OutputType::Base16),
             "Base32" => Ok(OutputType::Base32),
             "Base58" => Ok(OutputType::Base58),
             "Base64" => Ok(OutputType::Base64),
-            "hex" => Ok(OutputType::Hex),
-            "base16" => Ok(OutputType::Hex),
+            "hex" => Ok(OutputType::Base16),
+            "base16" => Ok(OutputType::Base16),
             "base32" => Ok(OutputType::Base32),
             "base58" => Ok(OutputType::Base58),
             "base64" => Ok(OutputType::Base64),
@@ -101,7 +101,7 @@ enum Opt {
         pow_threads: Option<u64>,
 
         #[structopt(long)]
-        output_type: OutputType,
+        output_type: Option<OutputType>,
     },
 }
 
@@ -181,7 +181,16 @@ fn main() -> sampi::Result<()> {
             let s = builder.build(sampi::SampiData::String(data.trim().to_string()))?;
 
             match output_type {
-                _ => {
+                None | Some(OutputType::Base64) => {
+                    println!("{}", s.to_base64());
+                },
+                Some(OutputType::Base58) => {
+                    println!("{}", s.to_base58());
+                },
+                Some(OutputType::Base32) => {
+                    println!("{}", s.to_base32());
+                },
+                Some(OutputType::Base16) => {
                     println!("{}", s.to_hex());
                 }
             }
