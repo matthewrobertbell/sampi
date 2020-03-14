@@ -85,6 +85,9 @@ pub enum SampiData {
     Array8ByteVec(Vec<[u8; 8]>),
     Array16ByteVec(Vec<[u8; 16]>),
     Array32ByteVec(Vec<[u8; 32]>),
+
+    SignedNumber(i128),
+    UnsignedNumber(u128),
 }
 
 impl SampiData {
@@ -374,6 +377,7 @@ impl Sampi {
         let mut signable_data = serialize(&self.data).unwrap();
         signable_data.extend(serialize(&self.unix_time).unwrap());
         signable_data.extend(&self.public_key);
+        signable_data.extend(serialize(&self.version).unwrap());
         signable_data.extend(serialize(&self.nonce).unwrap());
 
         signable_data
@@ -438,6 +442,7 @@ impl Sampi {
 
         signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
+        signable_data.extend(serialize(&CURRENT_SAMPI_FORMAT_VERSION).unwrap());
 
         let nonce = match min_pow_score {
             Some(min_pow_score) if min_pow_score == 0 => 0,
