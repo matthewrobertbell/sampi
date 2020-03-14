@@ -533,22 +533,18 @@ impl SampiFilter {
             return false;
         }
 
-        if let Some(public_key) = self.public_key {
-            if public_key != s.public_key {
-                return false;
-            }
+        if matches!(self.public_key, Some(public_key) if public_key != s.public_key) {
+            return false;
         }
 
         if s.unix_time < self.minimum_unix_time.unwrap_or(0)
-            || s.unix_time > self.maximum_unix_time.unwrap_or_else(|| 2u64.pow(48))
+            || s.unix_time > self.maximum_unix_time.unwrap_or_else(|| u64::max_value())
         {
             return false;
         }
 
-        if let Some(data_variant) = &self.data_variant {
-            if data_variant != &s.data.to_string() {
-                return false;
-            }
+        if matches!(&self.data_variant, Some(data_variant) if data_variant != &s.data.to_string()) {
+            return false;
         }
 
         let data_length = serialize(&s.data).unwrap().len() as u16;
