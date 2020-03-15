@@ -80,6 +80,7 @@ pub enum SampiData {
     // Sampi specific
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
+    SampiVec(Vec<Sampi>),
 
     // Vecs of byte arrays
     Array8ByteVec(Vec<[u8; 8]>),
@@ -282,7 +283,7 @@ impl Sampi {
             return Err("Data length is too large".into());
         }
 
-        let version: u8 = deserialize(&bytes[41..42]).unwrap();
+        let version: u8 = deserialize(&bytes[41..42])?;
 
         let mut new_bytes = (&bytes[..data_length as usize + SAMPI_OVERHEAD]).to_vec();
         new_bytes[41] = 0;
@@ -442,7 +443,7 @@ impl Sampi {
 
         signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
-        signable_data.extend(serialize(&CURRENT_SAMPI_FORMAT_VERSION).unwrap());
+        signable_data.extend(serialize(&CURRENT_SAMPI_FORMAT_VERSION)?);
 
         let nonce = match min_pow_score {
             Some(min_pow_score) if min_pow_score == 0 => 0,
