@@ -1,5 +1,6 @@
 #![allow(clippy::new_without_default)]
 
+use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -25,6 +26,7 @@ use glob::glob;
 use hex;
 use rand::Rng;
 use rand_core::OsRng;
+use raptorq::{Decoder, Encoder, EncodingPacket, ObjectTransmissionInformation};
 use rust_base58::{FromBase58, ToBase58};
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
@@ -42,6 +44,7 @@ big_array! { BigArray; }
 pub const MAX_DATA_LENGTH: usize = 912;
 pub const SAMPI_OVERHEAD: usize = 112;
 const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
+const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 800;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -81,6 +84,12 @@ pub enum SampiData {
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
     SampiVec(Vec<Sampi>),
+    SampiRaptorPacket {
+        data: Vec<u8>,
+        stream_id: u64,
+        block_count: u32,
+        total_blocks: Option<u32>,
+    },
 
     // Vecs of byte arrays
     Array8ByteVec(Vec<[u8; 8]>),
@@ -195,6 +204,88 @@ impl SampiKeyPair {
     }
 }
 
+struct SampiRaptorStream {
+    sampis: HashMap<u32, Vec<Sampi>>,
+    current_block_count: u32,
+    total_blocks: Option<u32>,
+    pub stream_id: Option<u64>,
+    public_key: Option<[u8; 32]>,
+}
+
+impl SampiRaptorStream {
+    fn new() -> SampiRaptorStream {
+        SampiRaptorStream {
+            sampis: HashMap::new(),
+            current_block_count: 0,
+            total_blocks: None,
+            stream_id: None,
+            public_key: None,
+        }
+    }
+
+    fn insert(&mut self, s: Sampi) {
+        if self.public_key.is_none() {
+            self.public_key = Some(s.public_key);
+        }
+        if Some(s.public_key) != self.public_key {
+            return;
+        }
+        if let SampiData::SampiRaptorPacket {
+            data: _,
+            stream_id,
+            block_count,
+            total_blocks,
+        } = &s.data
+        {
+            if self.total_blocks.is_none() {
+                self.total_blocks = *total_blocks;
+            }
+            if self.stream_id.is_none() {
+                self.stream_id = Some(*stream_id);
+            }
+            if *block_count >= self.current_block_count && Some(*stream_id) == self.stream_id {
+                let vec_entry = self.sampis.entry(*block_count).or_insert_with(Vec::new);
+
+                if !vec_entry.contains(&s) {
+                    vec_entry.push(s);
+                }
+            }
+        }
+    }
+}
+
+impl Iterator for SampiRaptorStream {
+    type Item = Vec<u8>;
+
+    fn next(&mut self) -> Option<Vec<u8>> {
+        if Some(self.current_block_count) == self.total_blocks {
+            return None;
+        }
+        if let Some(sampis) = self.sampis.get(&self.current_block_count) {
+            if sampis.len() >= 64 * 1024 / RAPTOR_SERIALIZED_PACKET_SIZE {
+                let decoder_config = ObjectTransmissionInformation::new(
+                    65536,
+                    RAPTOR_SERIALIZED_PACKET_SIZE as u16,
+                    1,
+                    1,
+                    8,
+                );
+                let mut decoder = Decoder::new(decoder_config);
+                for s in sampis {
+                    if let SampiData::SampiRaptorPacket { data, .. } = &s.data {
+                        if let Some(decoded) = decoder.decode(EncodingPacket::deserialize(data)) {
+                            self.current_block_count += 1;
+                            self.sampis.remove(&self.current_block_count);
+                            return Some(decoded);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
 #[derive(Clone)]
 pub struct SampiBuilder<'a> {
     min_pow_score: Option<u8>,
@@ -242,6 +333,43 @@ impl<'a> SampiBuilder<'a> {
             self.unix_time,
             self.threads_count,
         )
+    }
+
+    pub fn build_raptor_stream(
+        &'a self,
+        mut r: impl Read + 'a,
+        stream_id: u64,
+    ) -> impl Iterator<Item = Vec<Sampi>> + 'a {
+        let mut block_count: u32 = 0;
+        let mut buf = [0; 64 * 1024];
+
+        std::iter::from_fn(move || match r.read(&mut buf) {
+            Ok(0) => None,
+            Ok(n) => {
+                block_count += 1;
+
+                let repair_packets_count = n / RAPTOR_SERIALIZED_PACKET_SIZE;
+
+                let encoder =
+                    Encoder::with_defaults(&buf[0..n], RAPTOR_SERIALIZED_PACKET_SIZE as u16);
+                Some(
+                    encoder
+                        .get_encoded_packets(repair_packets_count as u32)
+                        .into_iter()
+                        .map(|packet| {
+                            self.build(SampiData::SampiRaptorPacket {
+                                    stream_id,
+                                    block_count: block_count - 1,
+                                    total_blocks: None,
+                                    data: packet.serialize(),
+                                })
+                                .unwrap()
+                        })
+                        .collect(),
+                )
+            }
+            Err(_) => None,
+        })
     }
 }
 

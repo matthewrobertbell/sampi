@@ -183,13 +183,13 @@ fn main() -> sampi::Result<()> {
             match output_type {
                 None | Some(OutputType::Base64) => {
                     println!("{}", s.to_base64());
-                },
+                }
                 Some(OutputType::Base58) => {
                     println!("{}", s.to_base58());
-                },
+                }
                 Some(OutputType::Base32) => {
                     println!("{}", s.to_base32());
-                },
+                }
                 Some(OutputType::Base16) => {
                     println!("{}", s.to_hex());
                 }
