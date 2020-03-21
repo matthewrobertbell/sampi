@@ -245,6 +245,7 @@ fn test_raptor_stream() -> Result<()> {
     let stream_id = 723232;
     let mut stream = SampiRaptorStream::new();
     assert_eq!(stream.stream_id, None);
+    assert_eq!(stream.public_key, None);
     let kp = SampiKeyPair::new();
 
     let mut new_data = Vec::new();
@@ -261,6 +262,7 @@ fn test_raptor_stream() -> Result<()> {
 
     assert_eq!(stream.next(), None);
     assert_eq!(stream.stream_id, Some(stream_id));
+    assert_eq!(stream.public_key, Some(kp.public_key()));
     assert!(data == new_data);
     Ok(())
 }
