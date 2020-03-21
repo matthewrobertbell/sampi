@@ -358,12 +358,12 @@ impl<'a> SampiBuilder<'a> {
                         .into_iter()
                         .map(|packet| {
                             self.build(SampiData::SampiRaptorPacket {
-                                    stream_id,
-                                    block_count: block_count - 1,
-                                    total_blocks: None,
-                                    data: packet.serialize(),
-                                })
-                                .unwrap()
+                                stream_id,
+                                block_count: block_count - 1,
+                                total_blocks: None,
+                                data: packet.serialize(),
+                            })
+                            .unwrap()
                         })
                         .collect(),
                 )
