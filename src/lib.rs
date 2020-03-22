@@ -275,7 +275,6 @@ impl Iterator for SampiRaptorStream {
                 for s in sampis {
                     if let SampiData::SampiRaptorPacket { data, .. } = &s.data {
                         if let Some(decoded) = decoder.decode(EncodingPacket::deserialize(data)) {
-                            println!("decoded! {} bytes", decoded.len());
                             self.current_block_count += 1;
                             self.sampis.remove(&self.current_block_count);
                             return Some(decoded);

@@ -297,7 +297,6 @@ fn test_raptor_stream_uneven_size() -> Result<()> {
         }
 
         if let Some(x) = stream.next() {
-            //dbg!(&x.len());
             new_data.extend_from_slice(&x);
         }
     }
