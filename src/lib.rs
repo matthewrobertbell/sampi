@@ -44,7 +44,7 @@ big_array! { BigArray; }
 pub const MAX_DATA_LENGTH: usize = 912;
 pub const SAMPI_OVERHEAD: usize = 112;
 const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
-const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 870;
+const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 860;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -88,7 +88,7 @@ pub enum SampiData {
         data: Vec<u8>,
         stream_id: u64,
         block_count: u32,
-        total_blocks: Option<u32>,
+        total_bytes: Option<u64>,
         object_transmission_information: ObjectTransmissionInformation,
     },
 
@@ -208,7 +208,7 @@ impl SampiKeyPair {
 struct SampiRaptorStream {
     sampis: HashMap<u32, Vec<Sampi>>,
     current_block_count: u32,
-    total_blocks: Option<u32>,
+    total_bytes: Option<u64>,
     pub stream_id: Option<u64>,
     public_key: Option<[u8; 32]>,
 }
@@ -218,7 +218,7 @@ impl SampiRaptorStream {
         SampiRaptorStream {
             sampis: HashMap::new(),
             current_block_count: 0,
-            total_blocks: None,
+            total_bytes: None,
             stream_id: None,
             public_key: None,
         }
@@ -235,12 +235,12 @@ impl SampiRaptorStream {
             data: _,
             stream_id,
             block_count,
-            total_blocks,
-            object_transmission_information: _
+            total_bytes,
+            object_transmission_information: _,
         } = &s.data
         {
-            if self.total_blocks.is_none() {
-                self.total_blocks = *total_blocks;
+            if self.total_bytes.is_none() {
+                self.total_bytes = *total_bytes;
             }
             if self.stream_id.is_none() {
                 self.stream_id = Some(*stream_id);
@@ -260,17 +260,18 @@ impl Iterator for SampiRaptorStream {
     type Item = Vec<u8>;
 
     fn next(&mut self) -> Option<Vec<u8>> {
-        if Some(self.current_block_count) == self.total_blocks {
-            return None;
-        }
         if let Some(sampis) = self.sampis.get(&self.current_block_count) {
-            let object_transmission_information =
-                if let SampiData::SampiRaptorPacket { object_transmission_information, .. } = sampis.first()?.clone().data {
-                    Some(object_transmission_information)
-                } else {
-                    None
-                }?;
-            if sampis.len() >= object_transmission_information.transfer_length() as usize / RAPTOR_SERIALIZED_PACKET_SIZE {
+            let object_transmission_information = match sampis.first()?.data.clone() {
+                SampiData::SampiRaptorPacket {
+                    object_transmission_information,
+                    ..
+                } => Some(object_transmission_information),
+                _ => None,
+            }?;
+            if sampis.len()
+                >= object_transmission_information.transfer_length() as usize
+                    / RAPTOR_SERIALIZED_PACKET_SIZE
+            {
                 let mut decoder = Decoder::new(object_transmission_information);
                 for s in sampis {
                     if let SampiData::SampiRaptorPacket { data, .. } = &s.data {
@@ -340,6 +341,7 @@ impl<'a> SampiBuilder<'a> {
         &'a self,
         mut r: impl Read + 'a,
         stream_id: u64,
+        total_bytes: Option<u64>,
     ) -> impl Iterator<Item = Vec<Sampi>> + 'a {
         let mut block_count: u32 = 0;
         let mut buf = [0; 64 * 1024];
@@ -349,8 +351,7 @@ impl<'a> SampiBuilder<'a> {
             Ok(n) => {
                 block_count += 1;
 
-                let repair_packets_count =
-                    std::cmp::max(n / RAPTOR_SERIALIZED_PACKET_SIZE, 15);
+                let repair_packets_count = std::cmp::max(n / RAPTOR_SERIALIZED_PACKET_SIZE, 15);
 
                 let encoder =
                     Encoder::with_defaults(&buf[0..n], RAPTOR_SERIALIZED_PACKET_SIZE as u16);
@@ -362,9 +363,9 @@ impl<'a> SampiBuilder<'a> {
                             self.build(SampiData::SampiRaptorPacket {
                                 stream_id,
                                 block_count: block_count - 1,
-                                total_blocks: None,
+                                total_bytes,
                                 data: packet.serialize(),
-                                object_transmission_information: encoder.get_config()
+                                object_transmission_information: encoder.get_config(),
                             })
                             .unwrap()
                         })

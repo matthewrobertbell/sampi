@@ -235,11 +235,9 @@ fn test_filtering() -> Result<()> {
     Ok(())
 }
 
-
-
 #[test]
 fn test_raptor_stream() -> Result<()> {
-    let mut data: Vec<u8> = vec![0; 256 * 1024];
+    let mut data: Vec<u8> = vec![0; 128 * 1024];
     for i in 0..data.len() {
         data[i] = rand::thread_rng().gen();
     }
@@ -252,10 +250,7 @@ fn test_raptor_stream() -> Result<()> {
 
     let mut new_data = Vec::with_capacity(data.len());
 
-    for x in kp
-        .new_sampi()
-        .build_raptor_stream(&data[..], stream_id)
-    {
+    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, None) {
         for s in x {
             stream.insert(s);
         }
@@ -274,7 +269,7 @@ fn test_raptor_stream() -> Result<()> {
 
 #[test]
 fn test_raptor_stream_uneven_size() -> Result<()> {
-    let mut data: Vec<u8> = vec![0; (256 * 1024) + 77];
+    let mut data: Vec<u8> = vec![0; (128 * 1024) + 77];
     for i in 0..data.len() {
         data[i] = rand::thread_rng().gen();
     }
@@ -287,12 +282,41 @@ fn test_raptor_stream_uneven_size() -> Result<()> {
 
     let mut new_data = Vec::with_capacity(data.len());
 
-    for x in kp
-        .new_sampi()
-        .build_raptor_stream(&data[..], stream_id)
-    {
+    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, None) {
         for s in x {
             //dbg!(s.serialized_length);
+            stream.insert(s);
+        }
+
+        if let Some(x) = stream.next() {
+            new_data.extend_from_slice(&x);
+        }
+    }
+
+    assert_eq!(stream.next(), None);
+    assert_eq!(stream.stream_id, Some(stream_id));
+    assert_eq!(stream.public_key, Some(kp.public_key()));
+    assert!(data == new_data);
+    Ok(())
+}
+
+#[test]
+fn test_raptor_stream_with_total_bytes() -> Result<()> {
+    let mut data: Vec<u8> = vec![0; 128 * 1024];
+    for i in 0..data.len() {
+        data[i] = rand::thread_rng().gen();
+    }
+
+    let stream_id = 723232;
+    let mut stream = SampiRaptorStream::new();
+    assert_eq!(stream.stream_id, None);
+    assert_eq!(stream.public_key, None);
+    let kp = SampiKeyPair::new();
+
+    let mut new_data = Vec::with_capacity(data.len());
+
+    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, Some(data.len() as u64)) {
+        for s in x {
             stream.insert(s);
         }
 
