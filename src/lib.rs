@@ -44,7 +44,7 @@ big_array! { BigArray; }
 pub const MAX_DATA_LENGTH: usize = 912;
 pub const SAMPI_OVERHEAD: usize = 112;
 const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
-const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 800;
+const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 870;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -89,6 +89,7 @@ pub enum SampiData {
         stream_id: u64,
         block_count: u32,
         total_blocks: Option<u32>,
+        object_transmission_information: ObjectTransmissionInformation,
     },
 
     // Vecs of byte arrays
@@ -235,6 +236,7 @@ impl SampiRaptorStream {
             stream_id,
             block_count,
             total_blocks,
+            object_transmission_information: _
         } = &s.data
         {
             if self.total_blocks.is_none() {
@@ -262,18 +264,18 @@ impl Iterator for SampiRaptorStream {
             return None;
         }
         if let Some(sampis) = self.sampis.get(&self.current_block_count) {
-            if sampis.len() >= 64 * 1024 / RAPTOR_SERIALIZED_PACKET_SIZE {
-                let decoder_config = ObjectTransmissionInformation::new(
-                    65536,
-                    RAPTOR_SERIALIZED_PACKET_SIZE as u16,
-                    1,
-                    1,
-                    8,
-                );
-                let mut decoder = Decoder::new(decoder_config);
+            let object_transmission_information =
+                if let SampiData::SampiRaptorPacket { object_transmission_information, .. } = sampis.first()?.clone().data {
+                    Some(object_transmission_information)
+                } else {
+                    None
+                }?;
+            if sampis.len() >= object_transmission_information.transfer_length() as usize / RAPTOR_SERIALIZED_PACKET_SIZE {
+                let mut decoder = Decoder::new(object_transmission_information);
                 for s in sampis {
                     if let SampiData::SampiRaptorPacket { data, .. } = &s.data {
                         if let Some(decoded) = decoder.decode(EncodingPacket::deserialize(data)) {
+                            println!("decoded! {} bytes", decoded.len());
                             self.current_block_count += 1;
                             self.sampis.remove(&self.current_block_count);
                             return Some(decoded);
@@ -348,7 +350,8 @@ impl<'a> SampiBuilder<'a> {
             Ok(n) => {
                 block_count += 1;
 
-                let repair_packets_count = n / RAPTOR_SERIALIZED_PACKET_SIZE;
+                let repair_packets_count =
+                    std::cmp::max(n / RAPTOR_SERIALIZED_PACKET_SIZE, 15);
 
                 let encoder =
                     Encoder::with_defaults(&buf[0..n], RAPTOR_SERIALIZED_PACKET_SIZE as u16);
@@ -362,6 +365,7 @@ impl<'a> SampiBuilder<'a> {
                                 block_count: block_count - 1,
                                 total_blocks: None,
                                 data: packet.serialize(),
+                                object_transmission_information: encoder.get_config()
                             })
                             .unwrap()
                         })
