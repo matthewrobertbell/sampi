@@ -70,7 +70,7 @@ fn test_to_and_from_base64() -> Result<()> {
     assert_eq!(s.data.variant_name(), "JSON");
 
     let base64 = s.to_base64();
-    assert_eq!(Sampi::from_base64(&base64)?.to_base64()[6..], base64[6..]);
+    assert_eq!(Sampi::from_base64(&base64)?.to_base64(), base64);
     Ok(())
 }
 
@@ -83,6 +83,26 @@ fn test_to_and_from_hex() -> Result<()> {
 
     let hex = s.to_hex();
     assert_eq!(Sampi::from_hex(&hex)?.to_hex()[4..], hex[4..]);
+    Ok(())
+}
+
+#[test]
+fn test_to_and_from_base32() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
+    assert_eq!(s.data.variant_name(), "String");
+
+    let data = SampiData::JSON("{'a': 5}".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
+    assert_eq!(s.data.variant_name(), "JSON");
+
+    let base32 = s.to_base32();
+    assert_eq!(Sampi::from_base32(&base32)?.to_base32(), base32);
     Ok(())
 }
 
@@ -250,7 +270,10 @@ fn test_raptor_stream() -> Result<()> {
 
     let mut new_data = Vec::with_capacity(data.len());
 
-    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, None) {
+    for x in kp
+        .new_sampi()
+        .build_raptor_stream(&data[..], stream_id, None)
+    {
         for s in x {
             stream.insert(s);
         }
@@ -282,7 +305,10 @@ fn test_raptor_stream_uneven_size() -> Result<()> {
 
     let mut new_data = Vec::with_capacity(data.len());
 
-    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, None) {
+    for x in kp
+        .new_sampi()
+        .build_raptor_stream(&data[..], stream_id, None)
+    {
         for s in x {
             //dbg!(s.serialized_length);
             stream.insert(s);
@@ -315,7 +341,11 @@ fn test_raptor_stream_with_total_bytes() -> Result<()> {
 
     let mut new_data = Vec::with_capacity(data.len());
 
-    for x in kp.new_sampi().build_raptor_stream(&data[..], stream_id, Some(data.len() as u64)) {
+    for x in kp.new_sampi().build_raptor_stream(
+        &data[..],
+        stream_id,
+        core::num::NonZeroU64::new(data.len() as u64),
+    ) {
         for s in x {
             stream.insert(s);
         }
@@ -329,5 +359,32 @@ fn test_raptor_stream_with_total_bytes() -> Result<()> {
     assert_eq!(stream.stream_id, Some(stream_id));
     assert_eq!(stream.public_key, Some(kp.public_key()));
     assert!(data == new_data);
+    Ok(())
+}
+
+#[test]
+fn test_to_and_from_bytes_with_corruption() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
+    assert_eq!(s.data.variant_name(), "String");
+    
+    let bytes = s.to_bytes();
+
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            dbg!(i);
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if &mutated_bytes == &bytes {
+                continue;
+            }
+            
+            assert!(Sampi::from_bytes(&mutated_bytes).is_err())
+        }
+    }
     Ok(())
 }

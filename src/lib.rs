@@ -45,6 +45,7 @@ pub const MAX_DATA_LENGTH: usize = 912;
 pub const SAMPI_OVERHEAD: usize = 112;
 const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
 const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 860;
+const CROCKFORD_ALPHABET: &'static [u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
@@ -476,6 +477,12 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a &str of base32
     pub fn from_base32(base32_string: &str) -> Result<Self> {
+        if !base32_string
+            .bytes()
+            .all(|b| CROCKFORD_ALPHABET.contains(&b.to_ascii_uppercase()))
+        {
+            return Err("Not a valid Base32 string".into());
+        }
         let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
             .ok_or_else(|| "Base32 Decoding Error".to_string())?;
         Self::from_bytes(&decoded)
@@ -501,7 +508,7 @@ impl Sampi {
 
     /// Serialize to a base64 string
     pub fn to_base64(&self) -> String {
-        base64_encode_config(&self.to_bytes(), base64::URL_SAFE)
+        base64_encode_config(&self.to_bytes(), base64::URL_SAFE_NO_PAD)
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base64
