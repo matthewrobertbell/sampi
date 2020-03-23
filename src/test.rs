@@ -370,7 +370,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<()> {
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
-    
+
     let bytes = s.to_bytes();
 
     for _ in 0..100 {
@@ -382,7 +382,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<()> {
             if &mutated_bytes == &bytes {
                 continue;
             }
-            
+
             assert!(Sampi::from_bytes(&mutated_bytes).is_err())
         }
     }
