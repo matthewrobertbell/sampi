@@ -88,7 +88,7 @@ pub enum SampiData {
         data: Vec<u8>,
         stream_id: u64,
         block_count: u32,
-        total_bytes: Option<u64>,
+        total_bytes: Option<core::num::NonZeroU64>,
         object_transmission_information: ObjectTransmissionInformation,
     },
 
@@ -208,7 +208,7 @@ impl SampiKeyPair {
 struct SampiRaptorStream {
     sampis: HashMap<u32, Vec<Sampi>>,
     current_block_count: u32,
-    total_bytes: Option<u64>,
+    total_bytes: Option<core::num::NonZeroU64>,
     pub stream_id: Option<u64>,
     public_key: Option<[u8; 32]>,
 }
@@ -341,7 +341,7 @@ impl<'a> SampiBuilder<'a> {
         &'a self,
         mut r: impl Read + 'a,
         stream_id: u64,
-        total_bytes: Option<u64>,
+        total_bytes: Option<core::num::NonZeroU64>,
     ) -> impl Iterator<Item = Vec<Sampi>> + 'a {
         let mut block_count: u32 = 0;
         let mut buf = [0; 64 * 1024];
@@ -413,6 +413,10 @@ impl Sampi {
         let data_length: u16 = deserialize(&bytes[42..44])?;
         if data_length as usize > MAX_DATA_LENGTH {
             return Err("Data length is too large".into());
+        }
+
+        if data_length as usize > bytes.len() - SAMPI_OVERHEAD {
+            return Err("Invalid data length".into());
         }
 
         let version: u8 = deserialize(&bytes[41..42])?;
