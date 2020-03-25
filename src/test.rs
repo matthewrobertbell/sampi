@@ -409,7 +409,7 @@ fn test_nonce_not_mutatable() -> Result<()> {
 fn test_hex_random_mutation() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data).unwrap();
+    let s = kp.new_sampi().build(data)?;
     let original_string = s.to_hex().to_ascii_lowercase();
     let bytes = original_string.clone().into_bytes();
 
@@ -436,7 +436,7 @@ fn test_hex_random_mutation() -> Result<()> {
 fn test_base32_random_mutation() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data).unwrap();
+    let s = kp.new_sampi().build(data)?;
     let original_string = s.to_base32().to_ascii_lowercase();
     let bytes = original_string.clone().into_bytes();
 
@@ -465,7 +465,7 @@ fn test_base32_random_mutation() -> Result<()> {
 fn test_base58_random_mutation() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data).unwrap();
+    let s = kp.new_sampi().build(data)?;
 
     let bytes = s.to_base58().into_bytes();
 
@@ -491,7 +491,7 @@ fn test_base58_random_mutation() -> Result<()> {
 fn test_base64_random_mutation() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data).unwrap();
+    let s = kp.new_sampi().build(data)?;
     let bytes = s.to_base64().into_bytes();
 
     for _ in 0..100 {
@@ -518,7 +518,7 @@ fn test_base64_random_mutation() -> Result<()> {
 fn test_bytes_random_mutation() -> Result<()> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data).unwrap();
+    let s = kp.new_sampi().build(data)?;
     let bytes = s.to_bytes();
     for _ in 0..100 {
         for i in 0..bytes.len() {
