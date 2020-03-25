@@ -388,3 +388,20 @@ fn test_to_and_from_bytes_with_corruption() -> Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn test_nonce_not_mutatable() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let mut s = kp.new_sampi().with_pow(20).build(data)?;
+
+    assert!(s.get_pow_score() >= 20);
+
+    for _ in 0..50 {
+        s.nonce += 1;
+        let bytes = s.to_bytes();
+        assert!(Sampi::from_bytes(&bytes).is_err());
+    }
+
+    Ok(())
+}
