@@ -399,9 +399,138 @@ fn test_nonce_not_mutatable() -> Result<()> {
 
     for _ in 0..50 {
         s.nonce += 1;
-        let bytes = s.to_bytes();
-        assert!(Sampi::from_bytes(&bytes).is_err());
+        assert!(Sampi::from_bytes(&s.to_bytes()).is_err());
     }
 
+    Ok(())
+}
+
+#[test]
+fn test_hex_random_mutation() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data).unwrap();
+    let original_string = s.to_hex().to_ascii_lowercase();
+    let bytes = original_string.clone().into_bytes();
+
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if let Ok(mutated_string) =
+            std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
+            {
+                if mutated_string == original_string {
+                    continue;
+                }
+
+                assert!(Sampi::from_hex(&mutated_string).is_err());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_base32_random_mutation() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data).unwrap();
+    let original_string = s.to_base32().to_ascii_lowercase();
+    let bytes = original_string.clone().into_bytes();
+
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if let Ok(mutated_string) =
+            std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
+            {
+                if mutated_string == original_string {
+                    continue;
+                }
+
+                if let Ok(new_s) = Sampi::from_base32(&mutated_string) {
+                   assert!(s.to_bytes() == new_s.to_bytes());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_base58_random_mutation() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data).unwrap();
+
+    let bytes = s.to_base58().into_bytes();
+
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if &mutated_bytes == &bytes {
+                continue;
+            }
+
+            assert!(std::str::from_utf8(&mutated_bytes)
+                .map_err(|e| e.into())
+                .and_then(|str| Sampi::from_base58(str)).is_err());
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_base64_random_mutation() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data).unwrap();
+    let bytes = s.to_base64().into_bytes();
+
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if &mutated_bytes == &bytes {
+                continue;
+            }
+
+            if let Ok(new_s) = std::str::from_utf8(&mutated_bytes)
+                .map_err(|e| e.into())
+                .and_then(|str| Sampi::from_base64(str))
+            {
+                assert!(s.to_bytes() == new_s.to_bytes());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bytes_random_mutation() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data).unwrap();
+    let bytes = s.to_bytes();
+    for _ in 0..100 {
+        for i in 0..bytes.len() {
+            let mut mutated_bytes = bytes.clone();
+            mutated_bytes[i] = rand::thread_rng().gen();
+
+            if &mutated_bytes == &bytes {
+                continue;
+            }
+
+            assert!(Sampi::from_bytes(&mutated_bytes).is_err());
+        }
+    }
     Ok(())
 }
