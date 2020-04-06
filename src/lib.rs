@@ -51,40 +51,57 @@ pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'stati
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
 pub enum SampiData {
-    // No Data
+    // Primitive Types
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+    F32(f32),
+    F64(f64),
+    Bool(bool),
+    Char(char),
     Null,
-    // Vecs of primitive types
-    U8Vec(Vec<u8>),
-    U16Vec(Vec<u16>),
-    U32Vec(Vec<u32>),
-    U64Vec(Vec<u64>),
-    U128Vec(Vec<u128>),
-    I8Vec(Vec<i8>),
-    I16Vec(Vec<i16>),
-    I32Vec(Vec<i32>),
-    I64Vec(Vec<i64>),
-    I128Vec(Vec<i128>),
-    F32Vec(Vec<f32>),
-    F64Vec(Vec<f64>),
-    BoolVec(Vec<bool>),
-    CharVec(Vec<char>),
-
-    // String aliases
     String(String),
-    JSON(String),
 
-    // Vec of String alises
-    StringVec(Vec<String>),
+    // Vecs of primitive types
+    VecU8(Vec<u8>),
+    VecU16(Vec<u16>),
+    VecU32(Vec<u32>),
+    VecU64(Vec<u64>),
+    VecU128(Vec<u128>),
+    VecI8(Vec<i8>),
+    VecI16(Vec<i16>),
+    VecI32(Vec<i32>),
+    VecI64(Vec<i64>),
+    VecI128(Vec<i128>),
+    VecF32(Vec<f32>),
+    VecF64(Vec<f64>),
+    VecBool(Vec<bool>),
+    VecChar(Vec<char>),
+    VecString(Vec<String>),
 
-    // Vec<u8> aliases
-    Bytes(Vec<u8>),
-    BSON(Vec<u8>),
-    CBOR(Vec<u8>),
+    // Vecs of Tuples
+    VecTupleStringString(Vec<(String, String)>),
+    VecTupleU8U8(Vec<(u8, u8)>),
+    VecTupleU16U16(Vec<(u16, u16)>),
+    VecTupleU32U32(Vec<(u32, u32)>),
+    VecTupleU64U64(Vec<(u64, u64)>),
+
+    // Vecs of arrays of bytes
+    VecArray16Byte(Vec<[u8; 16]>),
+    VecArray32Byte(Vec<[u8; 32]>),
 
     // Sampi specific
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
-    SampiVec(Vec<Sampi>),
+    VecSampi(Vec<Sampi>),
+    VecSampiFilter(Vec<SampiFilter>),
     SampiRaptorPacket {
         data: Vec<u8>,
         stream_id: u64,
@@ -92,21 +109,13 @@ pub enum SampiData {
         total_bytes: Option<core::num::NonZeroU64>,
         object_transmission_information: ObjectTransmissionInformation,
     },
-
-    // Vecs of byte arrays
-    Array8ByteVec(Vec<[u8; 8]>),
-    Array16ByteVec(Vec<[u8; 16]>),
-    Array32ByteVec(Vec<[u8; 32]>),
-
-    SignedNumber(i128),
-    UnsignedNumber(u128),
 }
 
 impl SampiData {
     pub fn human_readable(&self) -> String {
         match &self {
-            SampiData::String(s) | SampiData::JSON(s) => s.to_string(),
-            SampiData::Bytes(bytes) => format!("{:?}", bytes),
+            SampiData::String(s) => s.to_string(),
+            SampiData::U8(bytes) => format!("{:?}", bytes),
             SampiData::Null => "Null".to_string(),
             _ => "Unimplemented variant".to_string(),
         }

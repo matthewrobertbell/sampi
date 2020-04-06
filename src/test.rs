@@ -31,7 +31,8 @@ fn test_from_str_parse() -> Result<()> {
 #[test]
 fn test_null_data_variant() -> Result<()> {
     let kp = SampiKeyPair::new();
-    let _ = kp.new_sampi().build(SampiData::Null)?;
+    let s = kp.new_sampi().build(SampiData::Null)?;
+    assert_eq!(s.serialized_length, SAMPI_OVERHEAD as u16 + 4);
     Ok(())
 }
 
@@ -63,11 +64,11 @@ fn test_to_and_from_base64() -> Result<()> {
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
 
-    let data = SampiData::JSON("{'a': 5}".to_string());
+    let data = SampiData::String("{'a': 5}".to_string());
     let s = kp.new_sampi().build(data.clone())?;
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
-    assert_eq!(s.data.variant_name(), "JSON");
+    assert_eq!(s.data.variant_name(), "String");
 
     let base64 = s.to_base64();
     assert_eq!(Sampi::from_base64(&base64)?.to_base64(), base64);
@@ -95,11 +96,11 @@ fn test_to_and_from_base32() -> Result<()> {
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
 
-    let data = SampiData::JSON("{'a': 5}".to_string());
+    let data = SampiData::String("{'a': 5}".to_string());
     let s = kp.new_sampi().build(data.clone())?;
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
-    assert_eq!(s.data.variant_name(), "JSON");
+    assert_eq!(s.data.variant_name(), "String");
 
     let base32 = s.to_base32();
     assert_eq!(Sampi::from_base32(&base32)?.to_base32(), base32);
@@ -109,18 +110,18 @@ fn test_to_and_from_base32() -> Result<()> {
 #[test]
 fn test_data_sizes() -> Result<()> {
     let kp = SampiKeyPair::new();
-    assert!(kp.new_sampi().build(SampiData::U8Vec(vec![])).is_ok());
-    assert!(kp.new_sampi().build(SampiData::U8Vec(vec![0; 900])).is_ok());
+    assert!(kp.new_sampi().build(SampiData::VecU8(vec![])).is_ok());
+    assert!(kp.new_sampi().build(SampiData::VecU8(vec![0; 900])).is_ok());
     assert_eq!(
         kp.new_sampi()
-            .build(SampiData::U8Vec(vec![0; 900]))?
+            .build(SampiData::VecU8(vec![0; 900]))?
             .to_bytes()
             .len(),
         1024
     );
     assert!(kp
         .new_sampi()
-        .build(SampiData::U8Vec(vec![0; 901]))
+        .build(SampiData::VecU8(vec![0; 901]))
         .is_err());
     Ok(())
 }
@@ -131,7 +132,7 @@ fn test_pow() -> Result<()> {
     let s = kp
         .new_sampi()
         .with_pow(20)
-        .build(SampiData::U8Vec(vec![]))?;
+        .build(SampiData::VecU8(vec![]))?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     let s_2 = Sampi::from_base64(&base64)?;
@@ -146,7 +147,7 @@ fn test_one_thread_pow() -> Result<()> {
         .new_sampi()
         .with_pow(20)
         .with_pow_threads(1)
-        .build(SampiData::U8Vec(vec![]))?;
+        .build(SampiData::VecU8(vec![]))?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     let s_2 = Sampi::from_base64(&base64)?;
@@ -157,7 +158,7 @@ fn test_one_thread_pow() -> Result<()> {
 #[test]
 fn test_from_str() -> Result<()> {
     let kp = SampiKeyPair::new();
-    let s = kp.new_sampi().build(SampiData::U8Vec(vec![1, 2, 3]))?;
+    let s = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
     let base64 = s.to_base64();
     let hex = s.to_hex();
 
@@ -166,16 +167,28 @@ fn test_from_str() -> Result<()> {
 }
 
 #[test]
+fn test_vec_of_hashes() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
+    let h = s_1.get_hash();
+    let hashes: Vec<_> = std::iter::repeat(h).take(10).collect();
+    let s_2 = kp.new_sampi().build(SampiData::VecArray32Byte(hashes))?;
+    let bincoded_data_len = bincode::serialize(&s_2.data)?.len() as u16;
+    assert_eq!(s_2.serialized_length, SAMPI_OVERHEAD as u16 + bincoded_data_len);
+    Ok(())
+}
+
+#[test]
 fn test_nesting() -> Result<()> {
     let kp = SampiKeyPair::new();
-    let s_1 = kp.new_sampi().build(SampiData::U8Vec(vec![1, 2, 3]))?;
-    let s_2 = kp.new_sampi().build(SampiData::U8Vec(s_1.to_bytes()))?;
-    if let SampiData::U8Vec(bytes) = s_2.data {
+    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
+    let s_2 = kp.new_sampi().build(SampiData::VecU8(s_1.to_bytes()))?;
+    if let SampiData::VecU8(bytes) = s_2.data {
         let s_3 = Sampi::from_bytes(&bytes)?;
         assert_eq!(s_1.data, s_3.data);
         assert_eq!(s_1.unix_time, s_3.unix_time);
         assert_eq!(s_1.get_hash(), s_3.get_hash());
-        assert_eq!(s_3.data, SampiData::U8Vec(vec![1, 2, 3]));
+        assert_eq!(s_3.data, SampiData::VecU8(vec![1, 2, 3]));
     }
 
     Ok(())
@@ -184,7 +197,7 @@ fn test_nesting() -> Result<()> {
 #[test]
 fn test_embedded() -> Result<()> {
     let kp = SampiKeyPair::new();
-    let s_1 = kp.new_sampi().build(SampiData::U8Vec(vec![1, 2, 3]))?;
+    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
     let s_2 = kp
         .new_sampi()
         .build(SampiData::Sampi(Box::new(s_1.clone())))?;
@@ -202,10 +215,10 @@ fn test_bincode_storage() -> Result<()> {
     let v = (1, 2.0, 'a');
     let bincoded = bincode::serialize(&v)?;
 
-    let s_1 = kp.new_sampi().build(SampiData::U8Vec(bincoded))?;
+    let s_1 = kp.new_sampi().build(SampiData::VecU8(bincoded))?;
     let s_2 = Sampi::from_hex(&s_1.to_hex())?;
 
-    if let SampiData::U8Vec(bytes) = s_2.data {
+    if let SampiData::VecU8(bytes) = s_2.data {
         let decoded_v = bincode::deserialize(&bytes)?;
         assert_eq!(v, decoded_v);
     }
@@ -221,7 +234,7 @@ fn test_ordering() -> Result<()> {
         .map(|i| {
             kp.new_sampi()
                 .with_unix_time(i)
-                .build(SampiData::U8Vec(vec![]))
+                .build(SampiData::VecU8(vec![]))
                 .unwrap()
         })
         .collect();
@@ -242,14 +255,14 @@ fn test_filtering() -> Result<()> {
         .map(|i| {
             kp.new_sampi()
                 .with_unix_time(i)
-                .build(SampiData::Bytes(vec![]))
+                .build(SampiData::VecU8(vec![]))
                 .unwrap()
         })
         .collect();
 
     let mut filter = SampiFilter::new();
     filter.maximum_unix_time = Some(3);
-    filter.data_variant = Some("Bytes".to_string());
+    filter.data_variant = Some("VecU8".to_string());
 
     assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
     Ok(())
