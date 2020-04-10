@@ -111,7 +111,34 @@ fn test_to_and_from_base32() -> Result<()> {
 fn test_data_sizes() -> Result<()> {
     let kp = SampiKeyPair::new();
     assert!(kp.new_sampi().build(SampiData::VecU8(vec![])).is_ok());
-    assert!(kp.new_sampi().build(SampiData::VecU8(vec![0; 900])).is_ok());
+    assert!(kp.new_sampi().build(SampiData::VecU16(vec![])).is_ok());
+    assert!(kp.new_sampi().build(SampiData::VecU32(vec![])).is_ok());
+    for i in 1..=900 {
+        assert!(kp.new_sampi().build(SampiData::VecU8(vec![0; i])).is_ok());
+    }
+    for i in 1..=450 {
+        assert!(kp.new_sampi().build(SampiData::VecU16(vec![0; i])).is_ok());
+    }
+    for i in 1..=225 {
+        assert!(kp.new_sampi().build(SampiData::VecU32(vec![0; i])).is_ok());
+    }
+
+    assert!(kp
+        .new_sampi()
+        .build(SampiData::VecU8(vec![0; 901]))
+        .is_err());
+    assert!(kp
+        .new_sampi()
+        .build(SampiData::VecU8(vec![0; 1000]))
+        .is_err());
+    assert!(kp
+        .new_sampi()
+        .build(SampiData::VecU16(vec![0; 451]))
+        .is_err());
+    assert!(kp
+        .new_sampi()
+        .build(SampiData::VecU16(vec![0; 500]))
+        .is_err());
     assert_eq!(
         kp.new_sampi()
             .build(SampiData::VecU8(vec![0; 900]))?
@@ -119,6 +146,21 @@ fn test_data_sizes() -> Result<()> {
             .len(),
         1024
     );
+    assert_eq!(
+        kp.new_sampi()
+            .build(SampiData::VecU16(vec![0; 450]))?
+            .to_bytes()
+            .len(),
+        1024
+    );
+    assert_eq!(
+        kp.new_sampi()
+            .build(SampiData::VecU32(vec![0; 225]))?
+            .to_bytes()
+            .len(),
+        1024
+    );
+
     assert!(kp
         .new_sampi()
         .build(SampiData::VecU8(vec![0; 901]))
@@ -174,7 +216,10 @@ fn test_vec_of_hashes() -> Result<()> {
     let hashes: Vec<_> = std::iter::repeat(h).take(10).collect();
     let s_2 = kp.new_sampi().build(SampiData::VecArray32Byte(hashes))?;
     let bincoded_data_len = bincode::serialize(&s_2.data)?.len() as u16;
-    assert_eq!(s_2.serialized_length, SAMPI_OVERHEAD as u16 + bincoded_data_len);
+    assert_eq!(
+        s_2.serialized_length,
+        SAMPI_OVERHEAD as u16 + bincoded_data_len
+    );
     Ok(())
 }
 
@@ -432,7 +477,7 @@ fn test_hex_random_mutation() -> Result<()> {
             mutated_bytes[i] = rand::thread_rng().gen();
 
             if let Ok(mutated_string) =
-            std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
+                std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
             {
                 if mutated_string == original_string {
                     continue;
@@ -459,14 +504,14 @@ fn test_base32_random_mutation() -> Result<()> {
             mutated_bytes[i] = rand::thread_rng().gen();
 
             if let Ok(mutated_string) =
-            std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
+                std::str::from_utf8(&mutated_bytes).map(|m| m.to_ascii_lowercase())
             {
                 if mutated_string == original_string {
                     continue;
                 }
 
                 if let Ok(new_s) = Sampi::from_base32(&mutated_string) {
-                   assert!(s.to_bytes() == new_s.to_bytes());
+                    assert!(s.to_bytes() == new_s.to_bytes());
                 }
             }
         }
@@ -493,7 +538,8 @@ fn test_base58_random_mutation() -> Result<()> {
 
             assert!(std::str::from_utf8(&mutated_bytes)
                 .map_err(|e| e.into())
-                .and_then(|str| Sampi::from_base58(str)).is_err());
+                .and_then(|str| Sampi::from_base58(str))
+                .is_err());
         }
     }
 

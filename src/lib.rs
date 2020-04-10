@@ -92,6 +92,10 @@ pub enum SampiData {
     VecTupleU16U16(Vec<(u16, u16)>),
     VecTupleU32U32(Vec<(u32, u32)>),
     VecTupleU64U64(Vec<(u64, u64)>),
+    VecTupleStringU8(Vec<(String, u8)>),
+    VecTupleStringU16(Vec<(String, u16)>),
+    VecTupleStringU32(Vec<(String, u32)>),
+    VecTupleStringU64(Vec<(String, u64)>),
 
     // Vecs of arrays of bytes
     VecArray16Byte(Vec<[u8; 16]>),
@@ -109,6 +113,9 @@ pub enum SampiData {
         total_bytes: Option<core::num::NonZeroU64>,
         object_transmission_information: ObjectTransmissionInformation,
     },
+
+    // Useful tuples
+    OptionalArray32ByteAndString((Option<[u8; 32]>, String)),
 }
 
 impl SampiData {
