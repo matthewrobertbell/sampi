@@ -8,3 +8,4 @@ workflows:
   rust:
     jobs:
       - rust/build
+      - rust/test
