@@ -604,7 +604,7 @@ impl Sampi {
             signature: [0; 64],
             nonce: 0,
             data,
-            serialized_length: serialized_length,
+            serialized_length,
             version: CURRENT_SAMPI_FORMAT_VERSION,
         };
 
