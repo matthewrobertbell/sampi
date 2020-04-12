@@ -45,7 +45,7 @@ pub const MAX_DATA_LENGTH: usize = 912;
 pub const SAMPI_OVERHEAD: usize = 112;
 const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
 const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 860;
-const CROCKFORD_ALPHABET: &'static [u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
 
