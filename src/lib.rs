@@ -706,7 +706,7 @@ impl SampiFilter {
         }
 
         if s.unix_time < self.minimum_unix_time.unwrap_or(0)
-            || s.unix_time > self.maximum_unix_time.unwrap_or_else(|| u64::max_value())
+            || s.unix_time > self.maximum_unix_time.unwrap_or_else(u64::max_value)
         {
             return false;
         }
