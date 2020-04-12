@@ -257,11 +257,10 @@ impl SampiRaptorStream {
             return;
         }
         if let SampiData::SampiRaptorPacket {
-            data: _,
             stream_id,
             block_count,
             total_bytes,
-            object_transmission_information: _,
+            ..
         } = &s.data
         {
             if self.total_bytes.is_none() {
