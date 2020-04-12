@@ -116,6 +116,8 @@ pub enum SampiData {
 
     // Useful tuples
     OptionalArray32ByteAndString((Option<[u8; 32]>, String)),
+    OptionalArray32ByteAndVecU8((Option<[u8; 32]>, Vec<u8>)),
+    OptionalArray32ByteAndVecString((Option<[u8; 32]>, Vec<String>)),
 }
 
 impl SampiData {
@@ -124,6 +126,12 @@ impl SampiData {
             SampiData::String(s) => s.to_string(),
             SampiData::U8(bytes) => format!("{:?}", bytes),
             SampiData::Null => "Null".to_string(),
+            SampiData::OptionalArray32ByteAndString((array, string)) => {
+                format!("{:?} - {:?}", array, string)
+            }
+            SampiData::OptionalArray32ByteAndVecU8((array, bytes)) => {
+                format!("{:?} - {:?}", array, bytes)
+            }
             _ => "Unimplemented variant".to_string(),
         }
     }
