@@ -63,12 +63,14 @@ fn test_to_and_from_base64() -> Result<()> {
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
 
     let data = SampiData::String("{'a': 5}".to_string());
     let s = kp.new_sampi().build(data.clone())?;
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
     assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
 
     let base64 = s.to_base64();
     assert_eq!(Sampi::from_base64(&base64)?.to_base64(), base64);
@@ -95,12 +97,14 @@ fn test_to_and_from_base32() -> Result<()> {
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
 
     let data = SampiData::String("{'a': 5}".to_string());
     let s = kp.new_sampi().build(data.clone())?;
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
     assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
 
     let base32 = s.to_base32();
     assert_eq!(Sampi::from_base32(&base32)?.to_base32(), base32);
@@ -428,6 +432,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<()> {
     assert_eq!(s.data, data);
     assert_eq!(s.data.human_readable(), "Hello, World".to_string());
     assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
 
     let bytes = s.to_bytes();
 

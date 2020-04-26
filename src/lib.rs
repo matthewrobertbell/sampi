@@ -139,6 +139,61 @@ impl SampiData {
     pub fn variant_name(&self) -> String {
         self.to_string()
     }
+
+    pub fn variant(&self) -> u8 {
+        match self {
+            SampiData::U8 { .. } => 0,
+            SampiData::U16 { .. } => 1,
+            SampiData::U32 { .. } => 2,
+            SampiData::U64 { .. } => 3,
+            SampiData::U128 { .. } => 4,
+            SampiData::I8 { .. } => 5,
+            SampiData::I16 { .. } => 6,
+            SampiData::I32 { .. } => 7,
+            SampiData::I64 { .. } => 8,
+            SampiData::I128 { .. } => 9,
+            SampiData::F32 { .. } => 10,
+            SampiData::F64 { .. } => 11,
+            SampiData::Bool { .. } => 12,
+            SampiData::Char { .. } => 13,
+            SampiData::Null { .. } => 14,
+            SampiData::String { .. } => 15,
+            SampiData::VecU8 { .. } => 16,
+            SampiData::VecU16 { .. } => 17,
+            SampiData::VecU32 { .. } => 18,
+            SampiData::VecU64 { .. } => 19,
+            SampiData::VecU128 { .. } => 20,
+            SampiData::VecI8 { .. } => 21,
+            SampiData::VecI16 { .. } => 22,
+            SampiData::VecI32 { .. } => 23,
+            SampiData::VecI64 { .. } => 24,
+            SampiData::VecI128 { .. } => 25,
+            SampiData::VecF32 { .. } => 26,
+            SampiData::VecF64 { .. } => 27,
+            SampiData::VecBool { .. } => 28,
+            SampiData::VecChar { .. } => 29,
+            SampiData::VecString { .. } => 30,
+            SampiData::VecTupleStringString { .. } => 31,
+            SampiData::VecTupleU8U8 { .. } => 32,
+            SampiData::VecTupleU16U16 { .. } => 33,
+            SampiData::VecTupleU32U32 { .. } => 34,
+            SampiData::VecTupleU64U64 { .. } => 35,
+            SampiData::VecTupleStringU8 { .. } => 36,
+            SampiData::VecTupleStringU16 { .. } => 37,
+            SampiData::VecTupleStringU32 { .. } => 38,
+            SampiData::VecTupleStringU64 { .. } => 39,
+            SampiData::VecArray16Byte { .. } => 40,
+            SampiData::VecArray32Byte { .. } => 41,
+            SampiData::SampiFilter { .. } => 42,
+            SampiData::Sampi { .. } => 43,
+            SampiData::VecSampi { .. } => 44,
+            SampiData::VecSampiFilter { .. } => 45,
+            SampiData::SampiRaptorPacket { .. } => 46,
+            SampiData::OptionalArray32ByteAndString { .. } => 47,
+            SampiData::OptionalArray32ByteAndVecU8 { .. } => 48,
+            SampiData::OptionalArray32ByteAndVecString { .. } => 49,
+        }
+    }
 }
 
 pub struct SampiKeyPair {
