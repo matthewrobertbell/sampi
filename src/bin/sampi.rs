@@ -90,7 +90,7 @@ enum Opt {
 
         /// Set a specific unix time, rather than the current unix time
         #[structopt(short, long)]
-        unix_time: Option<u64>,
+        unix_time: Option<i64>,
 
         /// Minimum Proof of Work score to generate
         #[structopt(short, long)]

@@ -371,7 +371,7 @@ impl Iterator for SampiRaptorStream {
 pub struct SampiBuilder<'a> {
     min_pow_score: Option<u8>,
     ss_keypair: &'a SampiKeyPair,
-    unix_time: Option<u64>,
+    unix_time: Option<i64>,
     threads_count: u64,
 }
 
@@ -396,13 +396,13 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn with_unix_time(mut self, unix_time: u64) -> Self {
+    pub fn with_unix_time(mut self, unix_time: i64) -> Self {
         self.unix_time = Some(unix_time);
         self
     }
 
     pub fn with_random_unix_time(mut self) -> Self {
-        self.unix_time = Some(OsRng.gen_range(0, 2u64.pow(48) - 1));
+        self.unix_time = Some(OsRng.gen_range(0, std::i64::MAX));
         self
     }
 
@@ -459,7 +459,7 @@ impl<'a> SampiBuilder<'a> {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Sampi {
     pub public_key: [u8; 32],
-    pub unix_time: u64,
+    pub unix_time: i64,
     pub data: SampiData,
     #[serde(with = "BigArray")]
     signature: [u8; 64],
@@ -633,7 +633,7 @@ impl Sampi {
         data: SampiData,
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
-        unix_time: Option<u64>,
+        unix_time: Option<i64>,
         threads_count: u64,
     ) -> Result<Self> {
         let mut signable_data = serialize(&data)?;
@@ -644,7 +644,7 @@ impl Sampi {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        let unix_time = unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64);
+        let unix_time = unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64);
 
         #[cfg(target_arch = "wasm32")]
         let unix_time = std::cmp::min(unix_time.unwrap_or(Date::now() as u64), 2u64.pow(48) - 1);
@@ -738,8 +738,8 @@ impl PartialEq for Sampi {
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
     pub public_key: Option<[u8; 32]>,
-    pub minimum_unix_time: Option<u64>,
-    pub maximum_unix_time: Option<u64>,
+    pub minimum_unix_time: Option<i64>,
+    pub maximum_unix_time: Option<i64>,
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
     pub data_variant: Option<String>,
@@ -757,7 +757,7 @@ impl SampiFilter {
         }
 
         if s.unix_time < self.minimum_unix_time.unwrap_or(0)
-            || s.unix_time > self.maximum_unix_time.unwrap_or_else(u64::max_value)
+            || s.unix_time > self.maximum_unix_time.unwrap_or_else(i64::max_value)
         {
             return false;
         }
