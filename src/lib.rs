@@ -644,10 +644,7 @@ impl Sampi {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        let unix_time = std::cmp::min(
-            unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64),
-            2u64.pow(48) - 1,
-        );
+        let unix_time = unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64);
 
         #[cfg(target_arch = "wasm32")]
         let unix_time = std::cmp::min(unix_time.unwrap_or(Date::now() as u64), 2u64.pow(48) - 1);
