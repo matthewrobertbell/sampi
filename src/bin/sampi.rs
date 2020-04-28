@@ -127,9 +127,10 @@ fn main() -> sampi::Result<()> {
                         println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
                         println!("Data Variant Name: {}", s.data.variant_name());
+                        print!ln("Data: {}", s.data.human_readable());
                     }
-                    if let sampi::SampiData::String(string_data) = s.data {
-                        print!("{}", string_data);
+                    else {
+                        print!("{}", s.data.human_readable());
                     }
                 }
                 Err(e) => println!("{}", e),
