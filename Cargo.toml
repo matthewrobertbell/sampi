@@ -10,6 +10,7 @@ description = "Sampi is a serialization format, for 0 - 900 bytes of data, with 
 
 [features]
 wasm = ["ed25519-dalek/nightly", "rand/wasm-bindgen", "js-sys"]
+wasi = ["ed25519-dalek/nightly"]
 
 [dependencies]
 ed25519-dalek = "1.0.0-pre.1"

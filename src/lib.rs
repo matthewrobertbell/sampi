@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base32::{decode as base32_decode, encode as base32_encode, Alphabet as Base32Alphabet};
@@ -36,7 +36,7 @@ extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use js_sys::Date;
 
 big_array! { BigArray; }
@@ -643,11 +643,11 @@ impl Sampi {
             return Err("Data too large".into());
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let unix_time =
+        #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
+            let unix_time =
             unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64);
 
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
         let unix_time = unix_time.unwrap_or(Date::now() as i64);
 
         let mut s = Sampi {
