@@ -644,7 +644,7 @@ impl Sampi {
         }
 
         #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
-            let unix_time =
+        let unix_time =
             unix_time.unwrap_or(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64);
 
         #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
