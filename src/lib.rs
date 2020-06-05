@@ -20,10 +20,8 @@ use base32::{decode as base32_decode, encode as base32_encode, Alphabet as Base3
 use base64::decode_config as base64_decode_config;
 use base64::encode_config as base64_encode_config;
 use bincode::{deserialize, serialize};
-use dirs;
 use ed25519_dalek::{Keypair, PublicKey, Signature};
 use glob::glob;
-use hex;
 use rand::Rng;
 use rand_core::OsRng;
 use raptorq::{Decoder, Encoder, EncodingPacket, ObjectTransmissionInformation};

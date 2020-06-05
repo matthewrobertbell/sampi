@@ -1,10 +1,8 @@
 use std::io::{self, Read};
 use std::str::FromStr;
 
-use hex;
 use structopt::StructOpt;
 
-use sampi;
 use sampi::SampiKeyPair;
 
 #[derive(Debug)]
