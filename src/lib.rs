@@ -733,7 +733,7 @@ impl PartialEq for Sampi {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
     pub public_key: Option<[u8; 32]>,
@@ -741,7 +741,7 @@ pub struct SampiFilter {
     pub maximum_unix_time: Option<i64>,
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
-    pub data_variant: Option<String>,
+    pub data_variant: Option<u8>,
 }
 
 impl SampiFilter {
@@ -761,7 +761,7 @@ impl SampiFilter {
             return false;
         }
 
-        if matches!(&self.data_variant, Some(data_variant) if data_variant != &s.data.to_string()) {
+        if matches!(&self.data_variant, Some(data_variant) if data_variant != &s.data.variant()) {
             return false;
         }
 

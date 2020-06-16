@@ -311,7 +311,7 @@ fn test_filtering() -> Result<()> {
 
     let mut filter = SampiFilter::new();
     filter.maximum_unix_time = Some(3);
-    filter.data_variant = Some("VecU8".to_string());
+    filter.data_variant = Some(16);
 
     assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
     Ok(())
