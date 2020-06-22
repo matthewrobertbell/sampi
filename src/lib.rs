@@ -739,6 +739,7 @@ pub struct SampiFilter {
     pub public_key: Option<[u8; 32]>,
     pub minimum_unix_time: Option<i64>,
     pub maximum_unix_time: Option<i64>,
+    pub maximum_unix_time_age: Option<i64>,
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
     pub data_variant: Option<u8>,
@@ -761,6 +762,21 @@ impl SampiFilter {
             return false;
         }
 
+        if let Some(maximum_unix_time_age) = self.maximum_unix_time_age {
+            #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
+            let unix_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as i64;
+
+            #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+            let unix_time = Date::now() as i64;
+
+            if unix_time - s.unix_time > maximum_unix_time_age {
+                return false;
+            }
+        }
+
         if matches!(&self.data_variant, Some(data_variant) if data_variant != &s.data.variant()) {
             return false;
         }
@@ -775,6 +791,7 @@ impl SampiFilter {
             public_key: None,
             minimum_unix_time: None,
             maximum_unix_time: None,
+            maximum_unix_time_age: None,
             minimum_data_length: 0,
             maximum_data_length: MAX_DATA_LENGTH as u16,
             data_variant: None,

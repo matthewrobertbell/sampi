@@ -301,17 +301,46 @@ fn test_filtering() -> Result<()> {
     let kp = SampiKeyPair::new();
     let sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
-        .map(|i| {
+        .filter_map(|i| {
             kp.new_sampi()
                 .with_unix_time(i)
                 .build(SampiData::VecU8(vec![]))
-                .unwrap()
+                .ok()
         })
         .collect();
 
     let mut filter = SampiFilter::new();
     filter.maximum_unix_time = Some(3);
     filter.data_variant = Some(16);
+
+    assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
+    Ok(())
+}
+
+#[test]
+fn test_maximum_age_filtering() -> Result<()> {
+    #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
+    let unix_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    let unix_time = Date::now() as i64;
+
+    let kp = SampiKeyPair::new();
+    let sampis: Vec<_> = vec![10000, 5000, 3000, 2000, 1000]
+        .into_iter()
+        .filter_map(|i| {
+            kp.new_sampi()
+                .with_unix_time(unix_time - i)
+                .build(SampiData::VecU8(vec![]))
+                .ok()
+        })
+        .collect();
+
+    let mut filter = SampiFilter::new();
+    filter.maximum_unix_time_age = Some(3500);
 
     assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
     Ok(())
