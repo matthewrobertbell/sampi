@@ -745,9 +745,23 @@ pub struct SampiFilter {
     pub data_variant: Option<u8>,
 }
 
+/// The current unix time, in milliseconds
+pub fn get_unix_time_millis() -> Option<i64> {
+    #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
+    return Some(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .ok()?
+            .as_millis() as i64,
+    );
+
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    Some(Date::now() as i64)
+}
+
 impl SampiFilter {
     /// Test whether a given Sampi Message matches this filter
-    pub fn matches(&self, s: &Sampi) -> bool {
+    pub fn matches(&self, s: &Sampi, current_unix_time: Option<i64>) -> bool {
         if self.minimum_pow_score != 0 && s.get_pow_score() < self.minimum_pow_score {
             return false;
         }
@@ -763,16 +777,13 @@ impl SampiFilter {
         }
 
         if let Some(maximum_unix_time_age) = self.maximum_unix_time_age {
-            #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
-            let unix_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as i64;
-
-            #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-            let unix_time = Date::now() as i64;
-
-            if unix_time - s.unix_time > maximum_unix_time_age {
+            if let Some(current_unix_time) = current_unix_time {
+                dbg!(maximum_unix_time_age);
+                dbg!(current_unix_time - s.unix_time);
+                if current_unix_time - s.unix_time > maximum_unix_time_age {
+                    return false;
+                }
+            } else {
                 return false;
             }
         }

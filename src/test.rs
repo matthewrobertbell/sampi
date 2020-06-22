@@ -313,7 +313,14 @@ fn test_filtering() -> Result<()> {
     filter.maximum_unix_time = Some(3);
     filter.data_variant = Some(16);
 
-    assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
+    let current_unix_time = get_unix_time_millis();
+    assert_eq!(
+        sampis
+            .into_iter()
+            .filter(|s| filter.matches(s, current_unix_time))
+            .count(),
+        3
+    );
     Ok(())
 }
 
@@ -342,7 +349,15 @@ fn test_maximum_age_filtering() -> Result<()> {
     let mut filter = SampiFilter::new();
     filter.maximum_unix_time_age = Some(3500);
 
-    assert_eq!(sampis.into_iter().filter(|s| filter.matches(s)).count(), 3);
+    let current_unix_time = get_unix_time_millis();
+    dbg!(current_unix_time);
+    assert_eq!(
+        sampis
+            .into_iter()
+            .filter(|s| filter.matches(s, current_unix_time))
+            .count(),
+        3
+    );
     Ok(())
 }
 
