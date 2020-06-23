@@ -778,8 +778,6 @@ impl SampiFilter {
 
         if let Some(maximum_unix_time_age) = self.maximum_unix_time_age {
             if let Some(current_unix_time) = current_unix_time {
-                dbg!(maximum_unix_time_age);
-                dbg!(current_unix_time - s.unix_time);
                 if current_unix_time - s.unix_time > maximum_unix_time_age {
                     return false;
                 }
