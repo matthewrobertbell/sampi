@@ -37,14 +37,24 @@ fn test_null_data_variant() -> Result<()> {
 fn test_max_data_size() -> Result<()> {
     let kp = SampiKeyPair::new();
     for i in 0..=1000 {
-        let s = kp.new_sampi().build(SampiData::String("x".repeat(i)));
+        let data = "x".repeat(i);
+        let s = kp.new_sampi().build(SampiData::String(data.clone()));
         if i > 900 {
             assert!(s.is_err());
         } else {
             assert!(s.is_ok());
+            assert!(s.unwrap().to_bytes().len() - data.len() <= 124);
         }
     }
+    Ok(())
+}
 
+#[test]
+fn test_overhead() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = "Hello, World".to_string();
+    let s = kp.new_sampi().build(SampiData::String(data.clone()))?;
+    assert!(s.to_bytes().len() - data.len() <= 124);
     Ok(())
 }
 
