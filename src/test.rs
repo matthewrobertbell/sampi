@@ -10,9 +10,7 @@ fn test_to_and_from_bytes() -> Result<()> {
 
     let bytes = s.to_bytes();
     let derialized_s = Sampi::from_bytes(&bytes)?;
-    assert_eq!(derialized_s.to_bytes()[2..], bytes[2..]);
-    assert_eq!(s.serialized_length, derialized_s.serialized_length);
-    assert_eq!(s.serialized_length, bytes.len() as u16);
+    assert_eq!(derialized_s.to_bytes(), bytes);
     Ok(())
 }
 
@@ -31,8 +29,22 @@ fn test_from_str_parse() -> Result<()> {
 #[test]
 fn test_null_data_variant() -> Result<()> {
     let kp = SampiKeyPair::new();
-    let s = kp.new_sampi().build(SampiData::Null)?;
-    assert_eq!(s.serialized_length, SAMPI_OVERHEAD as u16 + 4);
+    assert!(kp.new_sampi().build(SampiData::Null).is_ok());
+    Ok(())
+}
+
+#[test]
+fn test_max_data_size() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    for i in 0..=1000 {
+        let s = kp.new_sampi().build(SampiData::String("x".repeat(i)));
+        if i > 900 {
+            assert!(s.is_err());
+        } else {
+            assert!(s.is_ok());
+        }
+    }
+
     Ok(())
 }
 
@@ -112,67 +124,6 @@ fn test_to_and_from_base32() -> Result<()> {
 }
 
 #[test]
-fn test_data_sizes() -> Result<()> {
-    let kp = SampiKeyPair::new();
-    assert!(kp.new_sampi().build(SampiData::VecU8(vec![])).is_ok());
-    assert!(kp.new_sampi().build(SampiData::VecU16(vec![])).is_ok());
-    assert!(kp.new_sampi().build(SampiData::VecU32(vec![])).is_ok());
-    for i in 1..=900 {
-        assert!(kp.new_sampi().build(SampiData::VecU8(vec![0; i])).is_ok());
-    }
-    for i in 1..=450 {
-        assert!(kp.new_sampi().build(SampiData::VecU16(vec![0; i])).is_ok());
-    }
-    for i in 1..=225 {
-        assert!(kp.new_sampi().build(SampiData::VecU32(vec![0; i])).is_ok());
-    }
-
-    assert!(kp
-        .new_sampi()
-        .build(SampiData::VecU8(vec![0; 901]))
-        .is_err());
-    assert!(kp
-        .new_sampi()
-        .build(SampiData::VecU8(vec![0; 1000]))
-        .is_err());
-    assert!(kp
-        .new_sampi()
-        .build(SampiData::VecU16(vec![0; 451]))
-        .is_err());
-    assert!(kp
-        .new_sampi()
-        .build(SampiData::VecU16(vec![0; 500]))
-        .is_err());
-    assert_eq!(
-        kp.new_sampi()
-            .build(SampiData::VecU8(vec![0; 900]))?
-            .to_bytes()
-            .len(),
-        1024
-    );
-    assert_eq!(
-        kp.new_sampi()
-            .build(SampiData::VecU16(vec![0; 450]))?
-            .to_bytes()
-            .len(),
-        1024
-    );
-    assert_eq!(
-        kp.new_sampi()
-            .build(SampiData::VecU32(vec![0; 225]))?
-            .to_bytes()
-            .len(),
-        1024
-    );
-
-    assert!(kp
-        .new_sampi()
-        .build(SampiData::VecU8(vec![0; 901]))
-        .is_err());
-    Ok(())
-}
-
-#[test]
 fn test_pow() -> Result<()> {
     let kp = SampiKeyPair::new();
     let s = kp
@@ -209,21 +160,6 @@ fn test_from_str() -> Result<()> {
     let hex = s.to_hex();
 
     assert_eq!(Sampi::from_str(&base64)?.data, Sampi::from_str(&hex)?.data);
-    Ok(())
-}
-
-#[test]
-fn test_vec_of_hashes() -> Result<()> {
-    let kp = SampiKeyPair::new();
-    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
-    let h = s_1.get_hash();
-    let hashes: Vec<_> = std::iter::repeat(h).take(10).collect();
-    let s_2 = kp.new_sampi().build(SampiData::VecArray32Byte(hashes))?;
-    let bincoded_data_len = bincode::serialize(&s_2.data)?.len() as u16;
-    assert_eq!(
-        s_2.serialized_length,
-        SAMPI_OVERHEAD as u16 + bincoded_data_len
-    );
     Ok(())
 }
 
@@ -416,7 +352,6 @@ fn test_raptor_stream_uneven_size() -> Result<()> {
         .build_raptor_stream(&data[..], stream_id, None)
     {
         for s in x {
-            //dbg!(s.serialized_length);
             stream.insert(s);
         }
 

@@ -19,7 +19,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base32::{decode as base32_decode, encode as base32_encode, Alphabet as Base32Alphabet};
 use base64::decode_config as base64_decode_config;
 use base64::encode_config as base64_encode_config;
-use bincode::{deserialize, serialize};
+use bincode::{serialize, Options};
 use ed25519_dalek::{Keypair, PublicKey, Signature};
 use glob::glob;
 use rand::Rng;
@@ -39,9 +39,7 @@ use js_sys::Date;
 
 big_array! { BigArray; }
 
-pub const MAX_DATA_LENGTH: usize = 912;
-pub const SAMPI_OVERHEAD: usize = 112;
-const CURRENT_SAMPI_FORMAT_VERSION: u8 = 0;
+pub const MAX_DATA_LENGTH: usize = 900;
 const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 860;
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
@@ -462,10 +460,6 @@ pub struct Sampi {
     #[serde(with = "BigArray")]
     signature: [u8; 64],
     nonce: u64,
-    #[serde(skip)]
-    pub serialized_length: u16,
-    #[serde(skip)]
-    pub version: u8,
 }
 
 impl FromStr for Sampi {
@@ -483,29 +477,11 @@ impl FromStr for Sampi {
 impl Sampi {
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() < SAMPI_OVERHEAD {
-            return Err("Deserialization input data is too small".into());
-        }
+        let s: Sampi = bincode::options()
+            .with_limit(1024)
+            .allow_trailing_bytes()
+            .deserialize(&bytes)?;
 
-        let data_length: u16 = deserialize(&bytes[42..44])?;
-        if data_length as usize > MAX_DATA_LENGTH {
-            return Err("Data length is too large".into());
-        }
-
-        if data_length as usize > bytes.len() - SAMPI_OVERHEAD {
-            return Err("Invalid data length".into());
-        }
-
-        let version: u8 = deserialize(&bytes[41..42])?;
-
-        let mut new_bytes = (&bytes[..data_length as usize + SAMPI_OVERHEAD]).to_vec();
-        new_bytes[41] = 0;
-        new_bytes[42] = 0;
-        new_bytes[43] = 0;
-
-        let mut s: Sampi = deserialize(&new_bytes)?;
-        s.serialized_length = data_length + SAMPI_OVERHEAD as u16;
-        s.version = version;
         let signable_data = s.generate_signable_data();
 
         let public_key =
@@ -523,7 +499,7 @@ impl Sampi {
         let mut bytes_offset = 0;
         std::iter::from_fn(move || {
             Self::from_bytes(&bytes[bytes_offset..]).ok().map(|s| {
-                bytes_offset += s.serialized_length as usize;
+                bytes_offset += s.to_bytes().len() as usize;
                 s
             })
         })
@@ -531,13 +507,10 @@ impl Sampi {
 
     /// Serialize to a Vector of bytes
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut serialized = serialize(&self).unwrap();
-        let data_length = serialized.len() - SAMPI_OVERHEAD;
-        let serialized_length = serialize(&(data_length as u16)).unwrap();
-        serialized[41] = self.version;
-        serialized[42] = serialized_length[0];
-        serialized[43] = serialized_length[1];
-        serialized
+        bincode::options()
+            .with_limit(1024)
+            .serialize(&self)
+            .unwrap()
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
@@ -594,10 +567,12 @@ impl Sampi {
     }
 
     fn generate_signable_data(&self) -> Vec<u8> {
-        let mut signable_data = serialize(&self.data).unwrap();
+        let mut signable_data = bincode::options()
+            .with_limit(1024)
+            .serialize(&self.data)
+            .unwrap();
         signable_data.extend(serialize(&self.unix_time).unwrap());
         signable_data.extend(&self.public_key);
-        signable_data.extend(serialize(&self.version).unwrap());
         signable_data.extend(serialize(&self.nonce).unwrap());
 
         signable_data
@@ -634,10 +609,8 @@ impl Sampi {
         unix_time: Option<i64>,
         threads_count: u64,
     ) -> Result<Self> {
-        let mut signable_data = serialize(&data)?;
-        let serialized_length = (signable_data.len() + SAMPI_OVERHEAD) as u16;
-
-        if signable_data.len() > MAX_DATA_LENGTH {
+        let mut signable_data = bincode::options().with_limit(1024).serialize(&data)?;
+        if signable_data.len() > MAX_DATA_LENGTH + 4 {
             return Err("Data too large".into());
         }
 
@@ -654,13 +627,10 @@ impl Sampi {
             signature: [0; 64],
             nonce: 0,
             data,
-            serialized_length,
-            version: CURRENT_SAMPI_FORMAT_VERSION,
         };
 
         signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
-        signable_data.extend(serialize(&CURRENT_SAMPI_FORMAT_VERSION)?);
 
         let nonce = match min_pow_score {
             Some(min_pow_score) if min_pow_score == 0 => 0,
