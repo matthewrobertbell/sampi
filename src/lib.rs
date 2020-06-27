@@ -725,6 +725,20 @@ impl PartialEq for Sampi {
     }
 }
 
+/// The current unix time, in milliseconds
+pub fn get_unix_time_millis() -> Option<i64> {
+    #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
+        return Some(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .ok()?
+            .as_millis() as i64,
+    );
+
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        Some(Date::now() as i64)
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
@@ -735,20 +749,6 @@ pub struct SampiFilter {
     pub minimum_data_length: u16,
     pub maximum_data_length: u16,
     pub data_variant: Option<u8>,
-}
-
-/// The current unix time, in milliseconds
-pub fn get_unix_time_millis() -> Option<i64> {
-    #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
-    return Some(
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .ok()?
-            .as_millis() as i64,
-    );
-
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-    Some(Date::now() as i64)
 }
 
 impl SampiFilter {
