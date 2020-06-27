@@ -1,11 +1,14 @@
-use sampi::{Result, Sampi, SampiData, SampiKeyPair};
+use sampi::{Result, Sampi, SampiData, SampiKeyPair, SampiMetaData};
 
 fn main() -> Result<()> {
     let kp = SampiKeyPair::new();
 
-    let data = "Hello World! 你好!".to_string();
+    let data = "x".repeat(900);
     let data_length = data.len();
-    let sampi = kp.new_sampi().build(SampiData::String(data))?;
+    let sampi = kp
+        .new_sampi()
+        .with_metadata(SampiMetaData::CounterAndBytes((1073741824, [77; 8])))
+        .build(SampiData::String(data))?;
 
     println!("Sampi size in bytes: {}", sampi.to_bytes().len());
     println!("Overhead: {}", sampi.to_bytes().len() - data_length);

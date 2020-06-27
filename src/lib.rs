@@ -192,6 +192,15 @@ impl SampiData {
     }
 }
 
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Debug, Display)]
+pub enum SampiMetadata {
+    None,
+    Bytes([u8; 12]),
+    Counter(u64),
+    CounterAndBytes((u32, [u8; 8])),
+    CounterPair((u32, u32))
+}
+
 pub struct SampiKeyPair {
     keypair: Keypair,
 }
@@ -369,6 +378,7 @@ pub struct SampiBuilder<'a> {
     ss_keypair: &'a SampiKeyPair,
     unix_time: Option<i64>,
     threads_count: u64,
+    metadata: SampiMetadata,
 }
 
 impl<'a> SampiBuilder<'a> {
@@ -378,6 +388,7 @@ impl<'a> SampiBuilder<'a> {
             ss_keypair,
             unix_time: None,
             threads_count: 1,
+            metadata: SampiMetadata::None,
         }
     }
 
@@ -389,6 +400,11 @@ impl<'a> SampiBuilder<'a> {
 
     pub fn with_pow_threads(mut self, threads_count: u64) -> Self {
         self.threads_count = threads_count;
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: SampiMetadata) -> Self {
+        self.metadata = metadata;
         self
     }
 
@@ -405,6 +421,7 @@ impl<'a> SampiBuilder<'a> {
     pub fn build(&self, data: SampiData) -> Result<Sampi> {
         Sampi::new(
             data,
+            self.metadata,
             self.min_pow_score,
             &self.ss_keypair,
             self.unix_time,
@@ -457,6 +474,7 @@ pub struct Sampi {
     pub public_key: [u8; 32],
     pub unix_time: i64,
     pub data: SampiData,
+    pub metadata: SampiMetadata,
     #[serde(with = "BigArray")]
     signature: [u8; 64],
     nonce: u64,
@@ -571,6 +589,7 @@ impl Sampi {
             .with_limit(1024)
             .serialize(&self.data)
             .unwrap();
+        signable_data.extend(serialize(&self.metadata).unwrap());
         signable_data.extend(serialize(&self.unix_time).unwrap());
         signable_data.extend(&self.public_key);
         signable_data.extend(serialize(&self.nonce).unwrap());
@@ -604,6 +623,7 @@ impl Sampi {
 
     fn new(
         data: SampiData,
+        metadata: SampiMetadata,
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
         unix_time: Option<i64>,
@@ -627,8 +647,10 @@ impl Sampi {
             signature: [0; 64],
             nonce: 0,
             data,
+            metadata,
         };
 
+        signable_data.extend(serialize(&metadata).unwrap());
         signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
 
