@@ -198,7 +198,7 @@ pub enum SampiMetadata {
     Bytes([u8; 12]),
     Counter(u64),
     CounterAndBytes((u32, [u8; 8])),
-    CounterPair((u32, u32))
+    CounterPair((u32, u32)),
 }
 
 pub struct SampiKeyPair {
@@ -728,7 +728,7 @@ impl PartialEq for Sampi {
 /// The current unix time, in milliseconds
 pub fn get_unix_time_millis() -> Option<i64> {
     #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
-        return Some(
+    return Some(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .ok()?
@@ -736,7 +736,7 @@ pub fn get_unix_time_millis() -> Option<i64> {
     );
 
     #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-        Some(Date::now() as i64)
+    Some(Date::now() as i64)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]

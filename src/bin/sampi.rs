@@ -5,6 +5,8 @@ use structopt::StructOpt;
 
 use sampi::SampiKeyPair;
 
+use qrcodegen::{QrCode, QrCodeEcc};
+
 #[derive(Debug)]
 struct HexData64(Vec<u8>);
 
@@ -39,6 +41,7 @@ enum OutputType {
     Base32,
     Base58,
     Base64,
+    QRCode,
 }
 
 impl FromStr for OutputType {
@@ -56,6 +59,8 @@ impl FromStr for OutputType {
             "base32" => Ok(OutputType::Base32),
             "base58" => Ok(OutputType::Base58),
             "base64" => Ok(OutputType::Base64),
+            "qr" => Ok(OutputType::QRCode),
+            "qrcode" => Ok(OutputType::QRCode),
             _ => Err("Not a valid output type".to_string()),
         }
     }
@@ -190,6 +195,18 @@ fn main() -> sampi::Result<()> {
                 }
                 Some(OutputType::Base16) => {
                     println!("{}", s.to_hex());
+                }
+                Some(OutputType::QRCode) => {
+                    let qr_code = QrCode::encode_text(&s.to_base64(), QrCodeEcc::Medium)?;
+                    let border: i32 = 4;
+                    for y in -border..qr_code.size() + border {
+                        for x in -border..qr_code.size() + border {
+                            let c: char = if qr_code.get_module(x, y) { ' ' } else { '█' };
+                            print!("{0}{0}", c);
+                        }
+                        println!();
+                    }
+                    println!();
                 }
             }
         }
