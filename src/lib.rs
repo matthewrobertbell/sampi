@@ -20,7 +20,7 @@ use base32::{decode as base32_decode, encode as base32_encode, Alphabet as Base3
 use base64::decode_config as base64_decode_config;
 use base64::encode_config as base64_encode_config;
 use bincode::{serialize, Options};
-use ed25519_dalek::{Keypair, PublicKey, Signature};
+use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
 use glob::glob;
 use rand::Rng;
 use rand_core::OsRng;
@@ -504,8 +504,7 @@ impl Sampi {
 
         let public_key =
             PublicKey::from_bytes(&s.public_key).map_err(|_| "Validation Error".to_string())?;
-        let signature =
-            Signature::from_bytes(&s.signature).map_err(|_| "Validation Error".to_string())?;
+        let signature = Signature::from(s.signature);
         public_key
             .verify(&signable_data, &signature)
             .map_err(|_| "Validation Error".to_string())?;
