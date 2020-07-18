@@ -132,6 +132,10 @@ impl SampiData {
         }
     }
 
+    pub fn serialized_len(&self) -> u16 {
+        serialize(&self).unwrap().len() as u16
+    }
+
     pub fn variant_name(&self) -> String {
         self.to_string()
     }
