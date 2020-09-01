@@ -1,13 +1,14 @@
-use sampi::{Result, Sampi, SampiData, SampiKeyPair, SampiMetaData};
+use sampi::{Result, Sampi, SampiData, SampiKeyPair, SampiMetadata};
 
 fn main() -> Result<()> {
     let kp = SampiKeyPair::new();
 
     let data = "x".repeat(900);
     let data_length = data.len();
+
     let sampi = kp
         .new_sampi()
-        .with_metadata(SampiMetaData::CounterAndBytes((1073741824, [77; 8])))
+        .with_metadata(SampiMetadata::CounterAndBytes((1073741824, [77; 8])))
         .build(SampiData::String(data))?;
 
     println!("Sampi size in bytes: {}", sampi.to_bytes().len());
