@@ -272,8 +272,6 @@ impl SampiKeyPair {
         let mut path = Self::data_dir()?;
         path.push(format!("{}.key", name));
 
-        dbg!(&path);
-
         let mut writer = File::create(path)?;
         writer.write_all(&self.to_bytes())?;
         Ok(())
