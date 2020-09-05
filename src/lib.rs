@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt;
 use std::fs::{create_dir, File};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -268,23 +268,23 @@ impl SampiKeyPair {
         Ok(keys)
     }
 
-    pub fn save_to_file<T: AsRef<Path>>(&self, name: T) -> Result<()> {
+    pub fn save_to_file(&self, name: &str) -> Result<()> {
         let mut path = Self::data_dir()?;
-        path.push(name);
-        path.push(".key");
+        path.push(format!("{}.key", name));
+
+        dbg!(&path);
 
         let mut writer = File::create(path)?;
         writer.write_all(&self.to_bytes())?;
         Ok(())
     }
 
-    pub fn load_from_file<T: AsRef<Path>>(name: T) -> Result<SampiKeyPair> {
+    pub fn load_from_file(name: &str) -> Result<SampiKeyPair> {
         let mut path = Self::data_dir()?;
-        path.push(name);
-        path.push(".key");
+        path.push(format!("{}.key", name));
 
         let mut f = File::open(path)?;
-        let mut bytes = vec![0u8; 64];
+        let mut bytes = [0u8; 64];
         f.read_exact(&mut bytes)?;
         Ok(SampiKeyPair::from_bytes(&bytes)?)
     }

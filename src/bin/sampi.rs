@@ -131,6 +131,7 @@ fn main() -> sampi::Result<()> {
                         println!("POW Score: {}", s.get_pow_score());
                         println!("Data Variant Name: {}", s.data.variant_name());
                         println!("Data: {}", s.data.human_readable());
+                        println!("Metatdata: {:?}", s.metadata);
                     } else {
                         print!("{}", s.data.human_readable());
                     }
