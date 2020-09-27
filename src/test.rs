@@ -338,7 +338,7 @@ fn test_raptor_stream() -> Result<()> {
     assert_eq!(stream.next(), None);
     assert_eq!(stream.stream_id, Some(stream_id));
     assert_eq!(stream.public_key, Some(kp.public_key()));
-    assert!(data == new_data);
+    assert_eq!(data, new_data);
     Ok(())
 }
 
@@ -373,7 +373,7 @@ fn test_raptor_stream_uneven_size() -> Result<()> {
     assert_eq!(stream.next(), None);
     assert_eq!(stream.stream_id, Some(stream_id));
     assert_eq!(stream.public_key, Some(kp.public_key()));
-    assert!(data == new_data);
+    assert_eq!(data, new_data);
     Ok(())
 }
 
