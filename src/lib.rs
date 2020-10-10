@@ -24,7 +24,6 @@ use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
 use glob::glob;
 use rand::Rng;
 use rand_core::OsRng;
-use raptorq::{Decoder, Encoder, EncodingPacket, ObjectTransmissionInformation};
 use rust_base58::{FromBase58, ToBase58};
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
@@ -40,7 +39,6 @@ use js_sys::Date;
 big_array! { BigArray; }
 
 pub const MAX_DATA_LENGTH: usize = 900;
-const RAPTOR_SERIALIZED_PACKET_SIZE: usize = 860;
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
@@ -102,13 +100,6 @@ pub enum SampiData {
     Sampi(Box<Sampi>),
     VecSampi(Vec<Sampi>),
     VecSampiFilter(Vec<SampiFilter>),
-    SampiRaptorPacket {
-        data: Vec<u8>,
-        stream_id: u64,
-        block_count: u32,
-        total_bytes: Option<core::num::NonZeroU64>,
-        object_transmission_information: ObjectTransmissionInformation,
-    },
 
     // Useful tuples
     OptionalArray32ByteAndString((Option<[u8; 32]>, String)),
@@ -188,10 +179,9 @@ impl SampiData {
             SampiData::Sampi { .. } => 43,
             SampiData::VecSampi { .. } => 44,
             SampiData::VecSampiFilter { .. } => 45,
-            SampiData::SampiRaptorPacket { .. } => 46,
-            SampiData::OptionalArray32ByteAndString { .. } => 47,
-            SampiData::OptionalArray32ByteAndVecU8 { .. } => 48,
-            SampiData::OptionalArray32ByteAndVecString { .. } => 49,
+            SampiData::OptionalArray32ByteAndString { .. } => 46,
+            SampiData::OptionalArray32ByteAndVecU8 { .. } => 47,
+            SampiData::OptionalArray32ByteAndVecString { .. } => 48,
         }
     }
 }
@@ -292,88 +282,6 @@ impl SampiKeyPair {
     }
 }
 
-struct SampiRaptorStream {
-    sampis: HashMap<u32, Vec<Sampi>>,
-    current_block_count: u32,
-    total_bytes: Option<core::num::NonZeroU64>,
-    pub stream_id: Option<u64>,
-    public_key: Option<[u8; 32]>,
-}
-
-impl SampiRaptorStream {
-    fn new() -> SampiRaptorStream {
-        SampiRaptorStream {
-            sampis: HashMap::new(),
-            current_block_count: 0,
-            total_bytes: None,
-            stream_id: None,
-            public_key: None,
-        }
-    }
-
-    fn insert(&mut self, s: Sampi) {
-        if self.public_key.is_none() {
-            self.public_key = Some(s.public_key);
-        }
-        if Some(s.public_key) != self.public_key {
-            return;
-        }
-        if let SampiData::SampiRaptorPacket {
-            stream_id,
-            block_count,
-            total_bytes,
-            ..
-        } = &s.data
-        {
-            if self.total_bytes.is_none() {
-                self.total_bytes = *total_bytes;
-            }
-            if self.stream_id.is_none() {
-                self.stream_id = Some(*stream_id);
-            }
-            if *block_count >= self.current_block_count && Some(*stream_id) == self.stream_id {
-                let vec_entry = self.sampis.entry(*block_count).or_insert_with(Vec::new);
-
-                if !vec_entry.contains(&s) {
-                    vec_entry.push(s);
-                }
-            }
-        }
-    }
-}
-
-impl Iterator for SampiRaptorStream {
-    type Item = Vec<u8>;
-
-    fn next(&mut self) -> Option<Vec<u8>> {
-        if let Some(sampis) = self.sampis.get(&self.current_block_count) {
-            let object_transmission_information = match sampis.first()?.data.clone() {
-                SampiData::SampiRaptorPacket {
-                    object_transmission_information,
-                    ..
-                } => Some(object_transmission_information),
-                _ => None,
-            }?;
-            if sampis.len()
-                >= object_transmission_information.transfer_length() as usize
-                    / RAPTOR_SERIALIZED_PACKET_SIZE
-            {
-                let mut decoder = Decoder::new(object_transmission_information);
-                for s in sampis {
-                    if let SampiData::SampiRaptorPacket { data, .. } = &s.data {
-                        if let Some(decoded) = decoder.decode(EncodingPacket::deserialize(data)) {
-                            self.current_block_count += 1;
-                            self.sampis.remove(&self.current_block_count);
-                            return Some(decoded);
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-}
-
 #[derive(Clone)]
 pub struct SampiBuilder<'a> {
     min_pow_score: Option<u8>,
@@ -429,45 +337,6 @@ impl<'a> SampiBuilder<'a> {
             self.unix_time,
             self.threads_count,
         )
-    }
-
-    pub fn build_raptor_stream(
-        &'a self,
-        mut r: impl Read + 'a,
-        stream_id: u64,
-        total_bytes: Option<core::num::NonZeroU64>,
-    ) -> impl Iterator<Item = Vec<Sampi>> + 'a {
-        let mut block_count: u32 = 0;
-        let mut buf = [0; 64 * 1024];
-
-        std::iter::from_fn(move || match r.read(&mut buf) {
-            Ok(0) => None,
-            Ok(n) => {
-                block_count += 1;
-
-                let repair_packets_count = std::cmp::max(n / RAPTOR_SERIALIZED_PACKET_SIZE, 15);
-
-                let encoder =
-                    Encoder::with_defaults(&buf[0..n], RAPTOR_SERIALIZED_PACKET_SIZE as u16);
-                Some(
-                    encoder
-                        .get_encoded_packets(repair_packets_count as u32)
-                        .into_iter()
-                        .map(|packet| {
-                            self.build(SampiData::SampiRaptorPacket {
-                                stream_id,
-                                block_count: block_count - 1,
-                                total_bytes,
-                                data: packet.serialize(),
-                                object_transmission_information: encoder.get_config(),
-                            })
-                            .unwrap()
-                        })
-                        .collect(),
-                )
-            }
-            Err(_) => None,
-        })
     }
 }
 
