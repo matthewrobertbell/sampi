@@ -1,6 +1,5 @@
 #![allow(clippy::new_without_default)]
 
-use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fmt;
