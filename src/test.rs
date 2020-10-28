@@ -134,6 +134,28 @@ fn test_to_and_from_base32() -> Result<()> {
 }
 
 #[test]
+fn test_to_and_from_base58() -> Result<()> {
+    let kp = SampiKeyPair::new();
+    let data = SampiData::String("Hello, World".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
+    assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
+
+    let data = SampiData::String("{'a': 5}".to_string());
+    let s = kp.new_sampi().build(data.clone())?;
+    assert_eq!(s.data, data);
+    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
+    assert_eq!(s.data.variant_name(), "String");
+    assert_eq!(s.data.variant(), 15);
+
+    let base58 = s.to_base58();
+    assert_eq!(Sampi::from_base58(&base58)?.to_base58(), base58);
+    Ok(())
+}
+
+#[test]
 fn test_pow() -> Result<()> {
     let kp = SampiKeyPair::new();
     let s = kp
