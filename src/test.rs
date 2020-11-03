@@ -1,8 +1,10 @@
 use super::*;
 use crate::SampiData;
 
+use anyhow::Error;
+
 #[test]
-fn test_to_and_from_bytes() -> Result<()> {
+fn test_to_and_from_bytes() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -15,7 +17,7 @@ fn test_to_and_from_bytes() -> Result<()> {
 }
 
 #[test]
-fn test_from_str_parse() -> Result<()> {
+fn test_from_str_parse() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -27,14 +29,14 @@ fn test_from_str_parse() -> Result<()> {
 }
 
 #[test]
-fn test_null_data_variant() -> Result<()> {
+fn test_null_data_variant() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     assert!(kp.new_sampi().build(SampiData::Null).is_ok());
     Ok(())
 }
 
 #[test]
-fn test_max_data_size() -> Result<()> {
+fn test_max_data_size() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     for i in 0..=1000 {
         let data = "x".repeat(i);
@@ -50,7 +52,7 @@ fn test_max_data_size() -> Result<()> {
 }
 
 #[test]
-fn test_overhead() -> Result<()> {
+fn test_overhead() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = "Hello, World".to_string();
     let s = kp.new_sampi().build(SampiData::String(data.clone()))?;
@@ -59,7 +61,7 @@ fn test_overhead() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
+fn test_to_and_from_bytes_with_additional_bytes() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -78,7 +80,7 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_base64() -> Result<()> {
+fn test_to_and_from_base64() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -100,7 +102,7 @@ fn test_to_and_from_base64() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_hex() -> Result<()> {
+fn test_to_and_from_hex() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -112,7 +114,7 @@ fn test_to_and_from_hex() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_base32() -> Result<()> {
+fn test_to_and_from_base32() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -134,7 +136,7 @@ fn test_to_and_from_base32() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_base58() -> Result<()> {
+fn test_to_and_from_base58() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -156,7 +158,7 @@ fn test_to_and_from_base58() -> Result<()> {
 }
 
 #[test]
-fn test_pow() -> Result<()> {
+fn test_pow() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let s = kp
         .new_sampi()
@@ -170,7 +172,7 @@ fn test_pow() -> Result<()> {
 }
 
 #[test]
-fn test_one_thread_pow() -> Result<()> {
+fn test_one_thread_pow() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let s = kp
         .new_sampi()
@@ -185,7 +187,7 @@ fn test_one_thread_pow() -> Result<()> {
 }
 
 #[test]
-fn test_from_str() -> Result<()> {
+fn test_from_str() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let s = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
     let base64 = s.to_base64();
@@ -196,7 +198,7 @@ fn test_from_str() -> Result<()> {
 }
 
 #[test]
-fn test_nesting() -> Result<()> {
+fn test_nesting() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
     let s_2 = kp.new_sampi().build(SampiData::VecU8(s_1.to_bytes()))?;
@@ -212,7 +214,7 @@ fn test_nesting() -> Result<()> {
 }
 
 #[test]
-fn test_embedded() -> Result<()> {
+fn test_embedded() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
     let s_2 = kp
@@ -227,7 +229,7 @@ fn test_embedded() -> Result<()> {
 }
 
 #[test]
-fn test_bincode_storage() -> Result<()> {
+fn test_bincode_storage() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let v = (1, 2.0, 'a');
     let bincoded = bincode::serialize(&v)?;
@@ -244,7 +246,7 @@ fn test_bincode_storage() -> Result<()> {
 }
 
 #[test]
-fn test_ordering() -> Result<()> {
+fn test_ordering() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let mut sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
@@ -265,7 +267,7 @@ fn test_ordering() -> Result<()> {
 }
 
 #[test]
-fn test_filtering() -> Result<()> {
+fn test_filtering() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
@@ -293,7 +295,7 @@ fn test_filtering() -> Result<()> {
 }
 
 #[test]
-fn test_maximum_age_filtering() -> Result<()> {
+fn test_maximum_age_filtering() -> Result<(), Error> {
     #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
     let unix_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -330,7 +332,7 @@ fn test_maximum_age_filtering() -> Result<()> {
 }
 
 #[test]
-fn test_to_and_from_bytes_with_corruption() -> Result<()> {
+fn test_to_and_from_bytes_with_corruption() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data.clone())?;
@@ -358,7 +360,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<()> {
 }
 
 #[test]
-fn test_nonce_not_mutatable() -> Result<()> {
+fn test_nonce_not_mutatable() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let mut s = kp.new_sampi().with_pow(20).build(data)?;
@@ -374,7 +376,7 @@ fn test_nonce_not_mutatable() -> Result<()> {
 }
 
 #[test]
-fn test_hex_random_mutation() -> Result<()> {
+fn test_hex_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data)?;
@@ -401,7 +403,7 @@ fn test_hex_random_mutation() -> Result<()> {
 }
 
 #[test]
-fn test_base32_random_mutation() -> Result<()> {
+fn test_base32_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data)?;
@@ -430,7 +432,7 @@ fn test_base32_random_mutation() -> Result<()> {
 }
 
 #[test]
-fn test_base58_random_mutation() -> Result<()> {
+fn test_base58_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data)?;
@@ -447,7 +449,7 @@ fn test_base58_random_mutation() -> Result<()> {
             }
 
             assert!(std::str::from_utf8(&mutated_bytes)
-                .map_err(|e| e.into())
+                .map_err(|_| SampiError::ValidationError)
                 .and_then(|str| Sampi::from_base58(str))
                 .is_err());
         }
@@ -457,7 +459,7 @@ fn test_base58_random_mutation() -> Result<()> {
 }
 
 #[test]
-fn test_base64_random_mutation() -> Result<()> {
+fn test_base64_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data)?;
@@ -473,7 +475,7 @@ fn test_base64_random_mutation() -> Result<()> {
             }
 
             if let Ok(new_s) = std::str::from_utf8(&mutated_bytes)
-                .map_err(|e| e.into())
+                .map_err(|_| SampiError::ValidationError)
                 .and_then(|str| Sampi::from_base64(str))
             {
                 assert!(s.to_bytes() == new_s.to_bytes());
@@ -484,7 +486,7 @@ fn test_base64_random_mutation() -> Result<()> {
 }
 
 #[test]
-fn test_bytes_random_mutation() -> Result<()> {
+fn test_bytes_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
     let s = kp.new_sampi().build(data)?;

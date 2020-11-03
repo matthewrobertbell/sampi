@@ -1,11 +1,10 @@
 use std::io::{self, Read};
 use std::str::FromStr;
 
-use structopt::StructOpt;
-
-use sampi::SampiKeyPair;
-
+use anyhow::{anyhow, Result};
 use qrcodegen::{QrCode, QrCodeEcc};
+use sampi::SampiKeyPair;
+use structopt::StructOpt;
 
 #[derive(Debug)]
 struct HexData64(Vec<u8>);
@@ -108,7 +107,7 @@ enum Opt {
     },
 }
 
-fn main() -> sampi::Result<()> {
+fn main() -> anyhow::Result<()> {
     match Opt::from_args() {
         Opt::Decode {
             verbose,
@@ -123,7 +122,7 @@ fn main() -> sampi::Result<()> {
                             .iter()
                             .any(|k| hex::encode(&k.0) == s.get_public_key_as_hex())
                     {
-                        return Err("Not an acceptable public key".into());
+                        return Err(anyhow!("Not an acceptable public key"));
                     }
                     if verbose {
                         println!("Public Key: {}", s.get_public_key_as_hex());

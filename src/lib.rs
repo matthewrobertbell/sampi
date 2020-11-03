@@ -1,7 +1,6 @@
 #![allow(clippy::new_without_default)]
 
 use std::env;
-use std::error::Error;
 use std::fmt;
 use std::fs::{create_dir, File};
 use std::io::{Read, Write};
@@ -40,7 +39,29 @@ big_array! { BigArray; }
 pub const MAX_DATA_LENGTH: usize = 900;
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync + 'static>>;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SampiError {
+    #[error("IO error")]
+    IOError(#[from] std::io::Error),
+    #[error("Validation error")]
+    ValidationError,
+    #[error("Data too large")]
+    DataTooLargeError,
+    #[error("IO Error")]
+    BincodeError(#[from] bincode::Error),
+    #[error("Decoding error")]
+    DecodingError,
+    #[error("Filesystem error")]
+    FilesystemError,
+    #[error("KeyPair error")]
+    KeyPairError,
+    #[error("SystemTime error")]
+    SystemTimeError(#[from] std::time::SystemTimeError),
+    #[error("POW error")]
+    POWError,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
 pub enum SampiData {
@@ -207,10 +228,9 @@ impl SampiKeyPair {
 }
 
 impl SampiKeyPair {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
         Ok(Self {
-            keypair: Keypair::from_bytes(bytes)
-                .map_err(|_| "Cannot read keypair from bytes".to_string())?,
+            keypair: Keypair::from_bytes(bytes).map_err(|_| SampiError::KeyPairError)?,
         })
     }
 
@@ -226,11 +246,11 @@ impl SampiKeyPair {
         *self.keypair.public.as_bytes()
     }
 
-    fn data_dir() -> Result<PathBuf> {
+    fn data_dir() -> Result<PathBuf, SampiError> {
         let path = match env::var("SAMPI_KEYS_PATH") {
             Ok(env_path) => PathBuf::from(env_path),
             Err(_) => {
-                let mut path = dirs::data_dir().ok_or("Can't find Data Dir")?;
+                let mut path = dirs::data_dir().ok_or(SampiError::FilesystemError)?;
                 path.push("sampi");
                 path
             }
@@ -242,11 +262,12 @@ impl SampiKeyPair {
         Ok(path)
     }
 
-    pub fn list_keys() -> Result<Vec<(String, SampiKeyPair)>> {
+    pub fn list_keys() -> Result<Vec<(String, SampiKeyPair)>, SampiError> {
         let mut path = Self::data_dir()?;
         path.push("*.key");
 
-        let keys: Vec<_> = glob(path.to_str().ok_or("Error")?)?
+        let keys: Vec<_> = glob(path.to_str().ok_or(SampiError::FilesystemError)?)
+            .map_err(|_| SampiError::FilesystemError)?
             .filter_map(|p| p.ok())
             .filter_map(|p| {
                 p.file_stem()
@@ -257,7 +278,7 @@ impl SampiKeyPair {
         Ok(keys)
     }
 
-    pub fn save_to_file(&self, name: &str) -> Result<()> {
+    pub fn save_to_file(&self, name: &str) -> Result<(), SampiError> {
         let mut path = Self::data_dir()?;
         path.push(format!("{}.key", name));
 
@@ -266,7 +287,7 @@ impl SampiKeyPair {
         Ok(())
     }
 
-    pub fn load_from_file(name: &str) -> Result<SampiKeyPair> {
+    pub fn load_from_file(name: &str) -> Result<SampiKeyPair, SampiError> {
         let mut path = Self::data_dir()?;
         path.push(format!("{}.key", name));
 
@@ -327,7 +348,7 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn build(&self, data: SampiData) -> Result<Sampi> {
+    pub fn build(&self, data: SampiData) -> Result<Sampi, SampiError> {
         Sampi::new(
             data,
             self.metadata,
@@ -351,7 +372,7 @@ pub struct Sampi {
 }
 
 impl FromStr for Sampi {
-    type Err = Box<dyn Error + Send + Sync + 'static>;
+    type Err = SampiError;
 
     /// Attempt to deserialize from a string of base64, base58, base32, or hex
     fn from_str(data: &str) -> std::result::Result<Self, Self::Err> {
@@ -364,7 +385,7 @@ impl FromStr for Sampi {
 
 impl Sampi {
     /// Attempt to deserialize a Sampi object from a slice of bytes
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
         let s: Sampi = bincode::options()
             .with_limit(1024)
             .allow_trailing_bytes()
@@ -373,11 +394,11 @@ impl Sampi {
         let signable_data = s.generate_signable_data();
 
         let public_key =
-            PublicKey::from_bytes(&s.public_key).map_err(|_| "Validation Error".to_string())?;
+            PublicKey::from_bytes(&s.public_key).map_err(|_| SampiError::ValidationError)?;
         let signature = Signature::from(s.signature);
         public_key
             .verify(&signable_data, &signature)
-            .map_err(|_| "Validation Error".to_string())?;
+            .map_err(|_| SampiError::ValidationError)?;
         Ok(s)
     }
 
@@ -401,8 +422,8 @@ impl Sampi {
     }
 
     /// Attempt to deserialize a Sampi object from a &str of hex
-    pub fn from_hex(hex_string: &str) -> Result<Self> {
-        let decoded = hex::decode(hex_string)?;
+    pub fn from_hex(hex_string: &str) -> Result<Self, SampiError> {
+        let decoded = hex::decode(hex_string).map_err(|_| SampiError::DecodingError)?;
         Self::from_bytes(&decoded)
     }
 
@@ -412,15 +433,15 @@ impl Sampi {
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base32
-    pub fn from_base32(base32_string: &str) -> Result<Self> {
+    pub fn from_base32(base32_string: &str) -> Result<Self, SampiError> {
         if !base32_string
             .bytes()
             .all(|b| CROCKFORD_ALPHABET.contains(&b.to_ascii_uppercase()))
         {
-            return Err("Not a valid Base32 string".into());
+            return Err(SampiError::DecodingError);
         }
         let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
-            .ok_or_else(|| "Base32 Decoding Error".to_string())?;
+            .ok_or_else(|| SampiError::DecodingError)?;
         Self::from_bytes(&decoded)
     }
 
@@ -430,10 +451,10 @@ impl Sampi {
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base58
-    pub fn from_base58(base58_string: &str) -> Result<Self> {
+    pub fn from_base58(base58_string: &str) -> Result<Self, SampiError> {
         let decoded = base58_string
             .from_base58()
-            .map_err(|_| "Base58 Decoding Error".to_string())?;
+            .map_err(|_| SampiError::DecodingError)?;
         Self::from_bytes(&decoded)
     }
 
@@ -448,8 +469,9 @@ impl Sampi {
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base64
-    pub fn from_base64(base64_string: &str) -> Result<Self> {
-        let decoded = base64_decode_config(base64_string, base64::URL_SAFE)?;
+    pub fn from_base64(base64_string: &str) -> Result<Self, SampiError> {
+        let decoded = base64_decode_config(base64_string, base64::URL_SAFE)
+            .map_err(|_| SampiError::DecodingError)?;
         Self::from_bytes(&decoded)
     }
 
@@ -497,10 +519,10 @@ impl Sampi {
         keypair: &SampiKeyPair,
         unix_time: Option<i64>,
         threads_count: u64,
-    ) -> Result<Self> {
+    ) -> Result<Self, SampiError> {
         let mut signable_data = bincode::options().with_limit(1024).serialize(&data)?;
         if signable_data.len() > MAX_DATA_LENGTH + 4 {
-            return Err("Data too large".into());
+            return Err(SampiError::DataTooLargeError);
         }
 
         #[cfg(any(not(target_arch = "wasm32"), target_os = "wasi"))]
@@ -548,9 +570,7 @@ impl Sampi {
                         });
                     }
                     drop(sender);
-                    receiver
-                        .recv()
-                        .map_err(|_| "Unable to find a POW solution".to_string())?
+                    receiver.recv().map_err(|_| SampiError::POWError)?
                 }
             }
             None => 0,
