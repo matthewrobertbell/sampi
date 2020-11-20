@@ -128,11 +128,15 @@ fn main() -> anyhow::Result<()> {
                         println!("Public Key: {}", s.get_public_key_as_hex());
                         println!("UNIX Time: {}", s.unix_time);
                         println!("POW Score: {}", s.get_pow_score());
-                        println!("Data Variant Name: {}", s.data.variant_name());
-                        println!("Data: {}", s.data.human_readable());
+                        for data in s.data {
+                            println!("Data Variant Name: {}", data.variant_name());
+                            println!("Data: {}", data.human_readable());
+                        }
                         println!("Metatdata: {:?}", s.metadata);
                     } else {
-                        print!("{}", s.data.human_readable());
+                        for data in s.data {
+                            print!("{}", data.human_readable());
+                        }
                     }
                 }
                 Err(e) => println!("{}", e),
@@ -181,7 +185,7 @@ fn main() -> anyhow::Result<()> {
                 builder = builder.with_pow_threads(pow_threads);
             }
 
-            let s = builder.build(sampi::SampiData::String(data.trim().to_string()))?;
+            let s = builder.build(vec![sampi::SampiData::String(data.trim().to_string())])?;
 
             match output_type {
                 None | Some(OutputType::Base64) => {

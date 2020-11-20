@@ -83,68 +83,103 @@ pub enum SampiData {
     Null,
     String(String),
 
-    // Vecs of primitive types
-    VecU8(Vec<u8>),
-    VecU16(Vec<u16>),
-    VecU32(Vec<u32>),
-    VecU64(Vec<u64>),
-    VecU128(Vec<u128>),
-    VecI8(Vec<i8>),
-    VecI16(Vec<i16>),
-    VecI32(Vec<i32>),
-    VecI64(Vec<i64>),
-    VecI128(Vec<i128>),
-    VecF32(Vec<f32>),
-    VecF64(Vec<f64>),
-    VecBool(Vec<bool>),
-    VecChar(Vec<char>),
-    VecString(Vec<String>),
-
-    // Vecs of Tuples
-    VecTupleStringString(Vec<(String, String)>),
-    VecTupleU8U8(Vec<(u8, u8)>),
-    VecTupleU16U16(Vec<(u16, u16)>),
-    VecTupleU32U32(Vec<(u32, u32)>),
-    VecTupleU64U64(Vec<(u64, u64)>),
-    VecTupleStringU8(Vec<(String, u8)>),
-    VecTupleStringU16(Vec<(String, u16)>),
-    VecTupleStringU32(Vec<(String, u32)>),
-    VecTupleStringU64(Vec<(String, u64)>),
-
-    // Vecs of arrays of bytes
-    VecArray16Byte(Vec<[u8; 16]>),
-    VecArray32Byte(Vec<[u8; 32]>),
+    StringPair((String, String)),
 
     // Sampi specific
     SampiFilter(SampiFilter),
     Sampi(Box<Sampi>),
-    VecSampi(Vec<Sampi>),
-    VecSampiFilter(Vec<SampiFilter>),
 
-    // Useful tuples
-    OptionalArray32ByteAndString((Option<[u8; 32]>, String)),
-    OptionalArray32ByteAndVecU8((Option<[u8; 32]>, Vec<u8>)),
-    OptionalArray32ByteAndVecString((Option<[u8; 32]>, Vec<String>)),
+    Array16Byte([u8; 16]),
+    Array32Byte([u8; 32]),
+    #[serde(with = "BigArray")]
+    Array64Byte([u8; 64]),
+    #[serde(with = "BigArray")]
+    Array128Byte([u8; 128]),
+    #[serde(with = "BigArray")]
+    Array256Byte([u8; 256]),
+
+    VecSampiData(Vec<SampiData>),
+    Bytes(Vec<u8>),
+}
+
+impl From<Vec<u8>> for SampiData {
+    fn from(v: Vec<u8>) -> Self {
+        Self::Bytes(v)
+    }
+}
+
+impl From<[u8; 16]> for SampiData {
+    fn from(v: [u8; 16]) -> Self {
+        Self::Array16Byte(v)
+    }
+}
+
+impl From<[u8; 32]> for SampiData {
+    fn from(v: [u8; 32]) -> Self {
+        Self::Array32Byte(v)
+    }
+}
+
+impl From<[u8; 64]> for SampiData {
+    fn from(v: [u8; 64]) -> Self {
+        Self::Array64Byte(v)
+    }
+}
+
+impl From<[u8; 128]> for SampiData {
+    fn from(v: [u8; 128]) -> Self {
+        Self::Array128Byte(v)
+    }
+}
+
+impl From<[u8; 256]> for SampiData {
+    fn from(v: [u8; 256]) -> Self {
+        Self::Array256Byte(v)
+    }
+}
+
+impl From<Vec<String>> for SampiData {
+    fn from(v: Vec<String>) -> Self {
+        Self::VecSampiData(v.into_iter().map(Self::String).collect())
+    }
+}
+
+impl From<&[String]> for SampiData {
+    fn from(v: &[String]) -> Self {
+        Self::VecSampiData(v.into_iter().map(|s| Self::String(s.to_owned())).collect())
+    }
+}
+
+impl From<Vec<(String, String)>> for SampiData {
+    fn from(v: Vec<(String, String)>) -> Self {
+        Self::VecSampiData(v.into_iter().map(Self::StringPair).collect())
+    }
+}
+
+impl From<&[(String, String)]> for SampiData {
+    fn from(v: &[(String, String)]) -> Self {
+        Self::VecSampiData(
+            v.into_iter()
+                .map(|(s1, s2)| Self::StringPair((s1.to_owned(), s2.to_owned())))
+                .collect(),
+        )
+    }
 }
 
 impl SampiData {
     pub fn human_readable(&self) -> String {
         match &self {
             SampiData::String(s) => s.to_string(),
-            SampiData::U8(bytes) => format!("{:?}", bytes),
+            SampiData::Bytes(bytes) => format!("{:?}", bytes),
             SampiData::Null => "Null".to_string(),
-            SampiData::OptionalArray32ByteAndString((array, string)) => {
-                format!("{:?} - {:?}", array, string)
-            }
-            SampiData::OptionalArray32ByteAndVecU8((array, bytes)) => {
-                format!("{:?} - {:?}", array, bytes)
-            }
+            SampiData::VecSampiData(v) => format!("{:?}", v),
+            SampiData::Array16Byte(v) => format!("{:?}", v),
+            SampiData::Array32Byte(v) => format!("{:?}", v),
+            SampiData::Array64Byte(v) => format!("{:?}", v),
+            SampiData::Array128Byte(v) => format!("{:?}", v),
+            SampiData::Array256Byte(v) => format!("{:?}", v),
             _ => "Unimplemented variant".to_string(),
         }
-    }
-
-    pub fn serialized_len(&self) -> u16 {
-        serialize(&self).unwrap().len() as u16
     }
 
     pub fn variant_name(&self) -> String {
@@ -169,39 +204,16 @@ impl SampiData {
             SampiData::Char { .. } => 13,
             SampiData::Null { .. } => 14,
             SampiData::String { .. } => 15,
-            SampiData::VecU8 { .. } => 16,
-            SampiData::VecU16 { .. } => 17,
-            SampiData::VecU32 { .. } => 18,
-            SampiData::VecU64 { .. } => 19,
-            SampiData::VecU128 { .. } => 20,
-            SampiData::VecI8 { .. } => 21,
-            SampiData::VecI16 { .. } => 22,
-            SampiData::VecI32 { .. } => 23,
-            SampiData::VecI64 { .. } => 24,
-            SampiData::VecI128 { .. } => 25,
-            SampiData::VecF32 { .. } => 26,
-            SampiData::VecF64 { .. } => 27,
-            SampiData::VecBool { .. } => 28,
-            SampiData::VecChar { .. } => 29,
-            SampiData::VecString { .. } => 30,
-            SampiData::VecTupleStringString { .. } => 31,
-            SampiData::VecTupleU8U8 { .. } => 32,
-            SampiData::VecTupleU16U16 { .. } => 33,
-            SampiData::VecTupleU32U32 { .. } => 34,
-            SampiData::VecTupleU64U64 { .. } => 35,
-            SampiData::VecTupleStringU8 { .. } => 36,
-            SampiData::VecTupleStringU16 { .. } => 37,
-            SampiData::VecTupleStringU32 { .. } => 38,
-            SampiData::VecTupleStringU64 { .. } => 39,
-            SampiData::VecArray16Byte { .. } => 40,
-            SampiData::VecArray32Byte { .. } => 41,
-            SampiData::SampiFilter { .. } => 42,
-            SampiData::Sampi { .. } => 43,
-            SampiData::VecSampi { .. } => 44,
-            SampiData::VecSampiFilter { .. } => 45,
-            SampiData::OptionalArray32ByteAndString { .. } => 46,
-            SampiData::OptionalArray32ByteAndVecU8 { .. } => 47,
-            SampiData::OptionalArray32ByteAndVecString { .. } => 48,
+            SampiData::StringPair { .. } => 16,
+            SampiData::SampiFilter { .. } => 17,
+            SampiData::Sampi { .. } => 18,
+            SampiData::Array16Byte { .. } => 19,
+            SampiData::Array32Byte { .. } => 20,
+            SampiData::Array64Byte { .. } => 21,
+            SampiData::Array128Byte { .. } => 22,
+            SampiData::Array256Byte { .. } => 23,
+            SampiData::VecSampiData { .. } => 24,
+            SampiData::Bytes { .. } => 25,
         }
     }
 }
@@ -211,7 +223,7 @@ pub enum SampiMetadata {
     None,
     Bytes([u8; 12]),
     Counter(u64),
-    CounterAndBytes((u32, [u8; 8])),
+    CounterAndBytes((u32, [u8; 6])),
     CounterPair((u32, u32)),
 }
 
@@ -348,7 +360,7 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn build(&self, data: SampiData) -> Result<Sampi, SampiError> {
+    pub fn build(&self, data: Vec<SampiData>) -> Result<Sampi, SampiError> {
         Sampi::new(
             data,
             self.metadata,
@@ -364,7 +376,7 @@ impl<'a> SampiBuilder<'a> {
 pub struct Sampi {
     pub public_key: [u8; 32],
     pub unix_time: i64,
-    pub data: SampiData,
+    pub data: Vec<SampiData>,
     pub metadata: SampiMetadata,
     #[serde(with = "BigArray")]
     signature: [u8; 64],
@@ -513,7 +525,7 @@ impl Sampi {
     }
 
     fn new(
-        data: SampiData,
+        data: Vec<SampiData>,
         metadata: SampiMetadata,
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
@@ -521,7 +533,7 @@ impl Sampi {
         threads_count: u64,
     ) -> Result<Self, SampiError> {
         let mut signable_data = bincode::options().with_limit(1024).serialize(&data)?;
-        if signable_data.len() > MAX_DATA_LENGTH + 4 {
+        if signable_data.len() > MAX_DATA_LENGTH + 5 {
             return Err(SampiError::DataTooLargeError);
         }
 
@@ -587,7 +599,7 @@ impl Sampi {
 
 impl fmt::Debug for Sampi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Sampi {{ data: {} }}", self.data)
+        write!(f, "Sampi {{ data: {:?} }}", self.data)
     }
 }
 
@@ -667,7 +679,12 @@ impl SampiFilter {
             }
         }
 
-        if matches!(&self.data_variant, Some(data_variant) if data_variant != &s.data.variant()) {
+        if self.data_variant.is_some()
+            && !s
+                .data
+                .iter()
+                .any(|d| Some(d.variant()) == self.data_variant)
+        {
             return false;
         }
 

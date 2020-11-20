@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-use sampi::{Result, SampiData, SampiKeyPair};
+use sampi::{SampiData, SampiKeyPair};
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     let kp = SampiKeyPair::new();
 
     let data = SampiData::String("Hello World! 你好!".to_string());
@@ -10,7 +10,7 @@ fn main() -> Result<()> {
         let mut milliseconds = Vec::new();
         for _ in 1..=100 {
             let now = Instant::now();
-            let _s = kp.new_sampi().with_pow(i).build(data.clone())?;
+            let _s = kp.new_sampi().with_pow(i).build(vec![data.clone()])?;
             let elapsed = now.elapsed();
             milliseconds.push((elapsed.as_secs() * 1000) + elapsed.subsec_millis() as u64);
         }

@@ -1,6 +1,6 @@
-use sampi::{Result, Sampi, SampiData, SampiKeyPair, SampiMetadata};
+use sampi::{Sampi, SampiData, SampiKeyPair, SampiMetadata};
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     let kp = SampiKeyPair::new();
 
     let data = "x".repeat(900);
@@ -8,8 +8,8 @@ fn main() -> Result<()> {
 
     let sampi = kp
         .new_sampi()
-        .with_metadata(SampiMetadata::CounterAndBytes((1073741824, [77; 8])))
-        .build(SampiData::String(data))?;
+        .with_metadata(SampiMetadata::CounterAndBytes((1073741824, [77; 6])))
+        .build(vec![SampiData::String(data)])?;
 
     println!("Sampi size in bytes: {}", sampi.to_bytes().len());
     println!("Overhead: {}", sampi.to_bytes().len() - data_length);
@@ -23,9 +23,12 @@ fn main() -> Result<()> {
     let deserialized_sampi = Sampi::from_base64(&base64_string)?;
     println!(
         "Deserialized data: {:?}",
-        deserialized_sampi.data.human_readable()
+        deserialized_sampi.data.first().unwrap().human_readable()
     );
-    println!("Data variant: {}", deserialized_sampi.data.variant_name());
+    println!(
+        "Data variant: {}",
+        deserialized_sampi.data.first().unwrap().variant_name()
+    );
 
     let bytes = sampi.to_bytes().repeat(5);
     dbg!(bytes.len());

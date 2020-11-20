@@ -7,8 +7,8 @@ use anyhow::Error;
 fn test_to_and_from_bytes() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
 
     let bytes = s.to_bytes();
     let derialized_s = Sampi::from_bytes(&bytes)?;
@@ -20,8 +20,8 @@ fn test_to_and_from_bytes() -> Result<(), Error> {
 fn test_from_str_parse() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
 
     let s_2: Sampi = s.to_base64().parse()?;
     assert_eq!(s.data, s_2.data);
@@ -31,7 +31,7 @@ fn test_from_str_parse() -> Result<(), Error> {
 #[test]
 fn test_null_data_variant() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
-    assert!(kp.new_sampi().build(SampiData::Null).is_ok());
+    assert!(kp.new_sampi().build(vec![SampiData::Null]).is_ok());
     Ok(())
 }
 
@@ -40,7 +40,15 @@ fn test_max_data_size() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     for i in 0..=1000 {
         let data = "x".repeat(i);
-        let s = kp.new_sampi().build(SampiData::String(data.clone()));
+        let s = kp
+            .new_sampi()
+            .with_unix_time(4611686018427387904)
+            .with_metadata(SampiMetadata::CounterAndBytes((
+                2147483648,
+                [1, 2, 3, 4, 5, 6],
+            )))
+            .build(vec![SampiData::String(data.clone())]);
+        println!("i: {} - {}", i, s.is_err());
         if i > 900 {
             assert!(s.is_err());
         } else {
@@ -55,7 +63,15 @@ fn test_max_data_size() -> Result<(), Error> {
 fn test_overhead() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = "Hello, World".to_string();
-    let s = kp.new_sampi().build(SampiData::String(data.clone()))?;
+    let s = kp
+        .new_sampi()
+        .with_unix_time(4611686018427387904)
+        .with_metadata(SampiMetadata::CounterAndBytes((
+            2147483648,
+            [1, 2, 3, 4, 5, 6],
+        )))
+        .build(vec![SampiData::String(data.clone())])?;
+    assert!(s.to_bytes().len() <= 1024);
     assert!(s.to_bytes().len() - data.len() <= 124);
     Ok(())
 }
@@ -64,15 +80,15 @@ fn test_overhead() -> Result<(), Error> {
 fn test_to_and_from_bytes_with_additional_bytes() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
 
     let mut bytes = s.to_bytes();
     let original_bytes_length = bytes.len();
     bytes.extend_from_slice(&[0, 0, 0, 0]);
     assert_eq!(
-        Sampi::from_bytes(&bytes)?.to_bytes()[2..],
-        bytes[2..original_bytes_length]
+        &Sampi::from_bytes(&bytes)?.to_bytes()[..],
+        &bytes[..original_bytes_length]
     );
     let s_from_bytes = Sampi::from_bytes(&bytes)?;
     assert_eq!(s.data, s_from_bytes.data);
@@ -83,18 +99,24 @@ fn test_to_and_from_bytes_with_additional_bytes() -> Result<(), Error> {
 fn test_to_and_from_base64() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "Hello, World".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let data = SampiData::String("{'a': 5}".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "{'a': 5}".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let base64 = s.to_base64();
     assert_eq!(Sampi::from_base64(&base64)?.to_base64(), base64);
@@ -105,11 +127,11 @@ fn test_to_and_from_base64() -> Result<(), Error> {
 fn test_to_and_from_hex() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
 
     let hex = s.to_hex();
-    assert_eq!(Sampi::from_hex(&hex)?.to_hex()[4..], hex[4..]);
+    assert_eq!(Sampi::from_hex(&hex)?.to_hex(), hex);
     Ok(())
 }
 
@@ -117,18 +139,24 @@ fn test_to_and_from_hex() -> Result<(), Error> {
 fn test_to_and_from_base32() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "Hello, World".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let data = SampiData::String("{'a': 5}".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "{'a': 5}".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let base32 = s.to_base32();
     assert_eq!(Sampi::from_base32(&base32)?.to_base32(), base32);
@@ -139,18 +167,24 @@ fn test_to_and_from_base32() -> Result<(), Error> {
 fn test_to_and_from_base58() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "Hello, World".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let data = SampiData::String("{'a': 5}".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "{'a': 5}".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "{'a': 5}".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let base58 = s.to_base58();
     assert_eq!(Sampi::from_base58(&base58)?.to_base58(), base58);
@@ -160,10 +194,7 @@ fn test_to_and_from_base58() -> Result<(), Error> {
 #[test]
 fn test_pow() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
-    let s = kp
-        .new_sampi()
-        .with_pow(20)
-        .build(SampiData::VecU8(vec![]))?;
+    let s = kp.new_sampi().with_pow(20).build(vec![])?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     let s_2 = Sampi::from_base64(&base64)?;
@@ -178,7 +209,7 @@ fn test_one_thread_pow() -> Result<(), Error> {
         .new_sampi()
         .with_pow(20)
         .with_pow_threads(1)
-        .build(SampiData::VecU8(vec![]))?;
+        .build(vec![])?;
     assert!(s.get_pow_score() >= 20);
     let base64 = s.to_base64();
     let s_2 = Sampi::from_base64(&base64)?;
@@ -189,7 +220,9 @@ fn test_one_thread_pow() -> Result<(), Error> {
 #[test]
 fn test_from_str() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
-    let s = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
+    let s = kp
+        .new_sampi()
+        .build(vec![SampiData::Bytes(vec![1, 2, 3])])?;
     let base64 = s.to_base64();
     let hex = s.to_hex();
 
@@ -200,14 +233,18 @@ fn test_from_str() -> Result<(), Error> {
 #[test]
 fn test_nesting() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
-    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
-    let s_2 = kp.new_sampi().build(SampiData::VecU8(s_1.to_bytes()))?;
-    if let SampiData::VecU8(bytes) = s_2.data {
+    let s_1 = kp
+        .new_sampi()
+        .build(vec![SampiData::Bytes(vec![1, 2, 3])])?;
+    let s_2 = kp
+        .new_sampi()
+        .build(vec![SampiData::Bytes(s_1.to_bytes())])?;
+    if let Some(SampiData::Bytes(bytes)) = s_2.data.first() {
         let s_3 = Sampi::from_bytes(&bytes)?;
         assert_eq!(s_1.data, s_3.data);
         assert_eq!(s_1.unix_time, s_3.unix_time);
         assert_eq!(s_1.get_hash(), s_3.get_hash());
-        assert_eq!(s_3.data, SampiData::VecU8(vec![1, 2, 3]));
+        assert_eq!(s_3.data, vec![SampiData::Bytes(vec![1, 2, 3])]);
     }
 
     Ok(())
@@ -216,14 +253,16 @@ fn test_nesting() -> Result<(), Error> {
 #[test]
 fn test_embedded() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
-    let s_1 = kp.new_sampi().build(SampiData::VecU8(vec![1, 2, 3]))?;
+    let s_1 = kp
+        .new_sampi()
+        .build(vec![SampiData::Bytes(vec![1, 2, 3])])?;
     let s_2 = kp
         .new_sampi()
-        .build(SampiData::Sampi(Box::new(s_1.clone())))?;
-    assert_eq!(SampiData::Sampi(Box::new(s_1.clone())), s_2.data);
+        .build(vec![SampiData::Sampi(Box::new(s_1.clone()))])?;
+    assert_eq!(vec![SampiData::Sampi(Box::new(s_1.clone()))], s_2.data);
 
     let s_3 = Sampi::from_base64(&s_2.to_base64())?;
-    assert_eq!(SampiData::Sampi(Box::new(s_1)), s_3.data);
+    assert_eq!(vec![SampiData::Sampi(Box::new(s_1))], s_3.data);
 
     Ok(())
 }
@@ -234,10 +273,10 @@ fn test_bincode_storage() -> Result<(), Error> {
     let v = (1, 2.0, 'a');
     let bincoded = bincode::serialize(&v)?;
 
-    let s_1 = kp.new_sampi().build(SampiData::VecU8(bincoded))?;
+    let s_1 = kp.new_sampi().build(vec![SampiData::Bytes(bincoded)])?;
     let s_2 = Sampi::from_hex(&s_1.to_hex())?;
 
-    if let SampiData::VecU8(bytes) = s_2.data {
+    if let Some(SampiData::Bytes(bytes)) = s_2.data.first() {
         let decoded_v = bincode::deserialize(&bytes)?;
         assert_eq!(v, decoded_v);
     }
@@ -250,12 +289,7 @@ fn test_ordering() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let mut sampis: Vec<_> = vec![5, 4, 3, 2, 1]
         .into_iter()
-        .map(|i| {
-            kp.new_sampi()
-                .with_unix_time(i)
-                .build(SampiData::VecU8(vec![]))
-                .unwrap()
-        })
+        .map(|i| kp.new_sampi().with_unix_time(i).build(vec![]).unwrap())
         .collect();
     assert_eq!(sampis[0].unix_time, 5);
     sampis.sort();
@@ -274,7 +308,10 @@ fn test_filtering() -> Result<(), Error> {
         .filter_map(|i| {
             kp.new_sampi()
                 .with_unix_time(i)
-                .build(SampiData::VecU8(vec![]))
+                .build(vec![SampiData::StringPair((
+                    "a".to_string(),
+                    "b".to_string(),
+                ))])
                 .ok()
         })
         .collect();
@@ -311,7 +348,7 @@ fn test_maximum_age_filtering() -> Result<(), Error> {
         .filter_map(|i| {
             kp.new_sampi()
                 .with_unix_time(unix_time - i)
-                .build(SampiData::VecU8(vec![]))
+                .build(vec![])
                 .ok()
         })
         .collect();
@@ -335,11 +372,14 @@ fn test_maximum_age_filtering() -> Result<(), Error> {
 fn test_to_and_from_bytes_with_corruption() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data.clone())?;
-    assert_eq!(s.data, data);
-    assert_eq!(s.data.human_readable(), "Hello, World".to_string());
-    assert_eq!(s.data.variant_name(), "String");
-    assert_eq!(s.data.variant(), 15);
+    let s = kp.new_sampi().build(vec![data.clone()])?;
+    assert_eq!(s.data, vec![data]);
+    assert_eq!(
+        s.data.first().unwrap().human_readable(),
+        "Hello, World".to_string()
+    );
+    assert_eq!(s.data.first().unwrap().variant_name(), "String");
+    assert_eq!(s.data.first().unwrap().variant(), 15);
 
     let bytes = s.to_bytes();
 
@@ -363,7 +403,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<(), Error> {
 fn test_nonce_not_mutatable() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let mut s = kp.new_sampi().with_pow(20).build(data)?;
+    let mut s = kp.new_sampi().with_pow(20).build(vec![data])?;
 
     assert!(s.get_pow_score() >= 20);
 
@@ -379,7 +419,7 @@ fn test_nonce_not_mutatable() -> Result<(), Error> {
 fn test_hex_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data)?;
+    let s = kp.new_sampi().build(vec![data])?;
     let original_string = s.to_hex().to_ascii_lowercase();
     let bytes = original_string.clone().into_bytes();
 
@@ -406,7 +446,7 @@ fn test_hex_random_mutation() -> Result<(), Error> {
 fn test_base32_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data)?;
+    let s = kp.new_sampi().build(vec![data])?;
     let original_string = s.to_base32().to_ascii_lowercase();
     let bytes = original_string.clone().into_bytes();
 
@@ -435,7 +475,7 @@ fn test_base32_random_mutation() -> Result<(), Error> {
 fn test_base58_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data)?;
+    let s = kp.new_sampi().build(vec![data])?;
 
     let bytes = s.to_base58().into_bytes();
 
@@ -462,7 +502,7 @@ fn test_base58_random_mutation() -> Result<(), Error> {
 fn test_base64_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data)?;
+    let s = kp.new_sampi().build(vec![data])?;
     let bytes = s.to_base64().into_bytes();
 
     for _ in 0..100 {
@@ -489,7 +529,7 @@ fn test_base64_random_mutation() -> Result<(), Error> {
 fn test_bytes_random_mutation() -> Result<(), Error> {
     let kp = SampiKeyPair::new();
     let data = SampiData::String("Hello, World".to_string());
-    let s = kp.new_sampi().build(data)?;
+    let s = kp.new_sampi().build(vec![data])?;
     let bytes = s.to_bytes();
     for _ in 0..100 {
         for i in 0..bytes.len() {
