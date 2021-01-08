@@ -146,7 +146,7 @@ impl From<Vec<String>> for SampiData {
 
 impl From<&[String]> for SampiData {
     fn from(v: &[String]) -> Self {
-        Self::VecSampiData(v.into_iter().map(|s| Self::String(s.to_owned())).collect())
+        Self::VecSampiData(v.iter().map(|s| Self::String(s.to_owned())).collect())
     }
 }
 
@@ -159,7 +159,7 @@ impl From<Vec<(String, String)>> for SampiData {
 impl From<&[(String, String)]> for SampiData {
     fn from(v: &[(String, String)]) -> Self {
         Self::VecSampiData(
-            v.into_iter()
+            v.iter()
                 .map(|(s1, s2)| Self::StringPair((s1.to_owned(), s2.to_owned())))
                 .collect(),
         )
@@ -453,7 +453,7 @@ impl Sampi {
             return Err(SampiError::DecodingError);
         }
         let decoded = base32_decode(Base32Alphabet::Crockford, base32_string)
-            .ok_or_else(|| SampiError::DecodingError)?;
+            .ok_or(SampiError::DecodingError)?;
         Self::from_bytes(&decoded)
     }
 
