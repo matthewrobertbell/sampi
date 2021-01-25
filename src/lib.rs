@@ -306,7 +306,7 @@ impl SampiKeyPair {
         let mut f = File::open(path)?;
         let mut bytes = [0u8; 64];
         f.read_exact(&mut bytes)?;
-        Ok(SampiKeyPair::from_bytes(&bytes)?)
+        SampiKeyPair::from_bytes(&bytes)
     }
 
     pub fn new_sampi(&self) -> SampiBuilder {
