@@ -83,6 +83,7 @@ pub enum SampiData {
     String(String),
 
     StringPair((String, String)),
+    SampiDataPair((Box<SampiData>, Box<SampiData>)),
 
     // Sampi specific
     SampiFilter(SampiFilter),
@@ -213,6 +214,7 @@ impl SampiData {
             SampiData::Array256Byte { .. } => 23,
             SampiData::VecSampiData { .. } => 24,
             SampiData::Bytes { .. } => 25,
+            SampiData::SampiDataPair { .. } => 26,
         }
     }
 }
