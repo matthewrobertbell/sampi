@@ -26,6 +26,7 @@ use rust_base58::{FromBase58, ToBase58};
 use serde_big_array::big_array;
 use serde_derive::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
+use thiserror::Error;
 
 extern crate strum;
 #[macro_use]
@@ -38,8 +39,6 @@ big_array! { BigArray; }
 
 pub const MAX_DATA_LENGTH: usize = 900;
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SampiError {
