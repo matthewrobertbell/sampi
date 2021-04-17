@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use std::io::{self, Read};
 use std::str::FromStr;
 
@@ -126,15 +128,16 @@ fn main() -> anyhow::Result<()> {
                     }
                     if verbose {
                         println!("Public Key: {}", s.get_public_key_as_hex());
-                        println!("UNIX Time: {}", s.unix_time);
-                        println!("POW Score: {}", s.get_pow_score());
-                        for data in s.data {
+                        println!("UNIX Time: {}", s.unix_time());
+                        if let Some(score) = s.get_pow_score() {
+                            println!("POW Score: {}", score);
+                        }
+                        for data in s.data() {
                             println!("Data Variant Name: {}", data.variant_name());
                             println!("Data: {}", data.human_readable());
                         }
-                        println!("Metatdata: {:?}", s.metadata);
                     } else {
-                        for data in s.data {
+                        for data in s.data() {
                             print!("{}", data.human_readable());
                         }
                     }

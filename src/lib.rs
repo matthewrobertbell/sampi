@@ -1,4 +1,5 @@
 #![allow(clippy::new_without_default)]
+#![allow(clippy::upper_case_acronyms)]
 
 use std::env;
 use std::fmt;
@@ -102,6 +103,12 @@ pub enum SampiData {
     Bytes(Vec<u8>),
 }
 
+impl From<u64> for SampiData {
+    fn from(v: u64) -> Self {
+        Self::U64(v)
+    }
+}
+
 impl From<Vec<u8>> for SampiData {
     fn from(v: Vec<u8>) -> Self {
         Self::Bytes(v)
@@ -141,6 +148,30 @@ impl From<[u8; 256]> for SampiData {
 impl From<Vec<String>> for SampiData {
     fn from(v: Vec<String>) -> Self {
         Self::VecSampiData(v.into_iter().map(Self::String).collect())
+    }
+}
+
+impl From<String> for SampiData {
+    fn from(v: String) -> Self {
+        Self::String(v)
+    }
+}
+
+impl From<&str> for SampiData {
+    fn from(v: &str) -> Self {
+        Self::String(v.to_string())
+    }
+}
+
+impl From<(String, String)> for SampiData {
+    fn from(v: (String, String)) -> Self {
+        Self::StringPair(v)
+    }
+}
+
+impl From<(&str, &str)> for SampiData {
+    fn from(v: (&str, &str)) -> Self {
+        Self::StringPair((v.0.to_string(), v.1.to_string()))
     }
 }
 
@@ -217,15 +248,6 @@ impl SampiData {
             SampiData::SampiDataPair { .. } => 26,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Debug, Display)]
-pub enum SampiMetadata {
-    None,
-    Bytes([u8; 12]),
-    Counter(u64),
-    CounterAndBytes((u32, [u8; 6])),
-    CounterPair((u32, u32)),
 }
 
 pub struct SampiKeyPair {
@@ -318,20 +340,18 @@ impl SampiKeyPair {
 #[derive(Clone)]
 pub struct SampiBuilder<'a> {
     min_pow_score: Option<u8>,
-    ss_keypair: &'a SampiKeyPair,
+    keypair: &'a SampiKeyPair,
     unix_time: Option<i64>,
     threads_count: u64,
-    metadata: SampiMetadata,
 }
 
 impl<'a> SampiBuilder<'a> {
-    fn new(ss_keypair: &'a SampiKeyPair) -> Self {
+    fn new(keypair: &'a SampiKeyPair) -> Self {
         SampiBuilder {
             min_pow_score: None,
-            ss_keypair,
+            keypair,
             unix_time: None,
             threads_count: 1,
-            metadata: SampiMetadata::None,
         }
     }
 
@@ -346,27 +366,21 @@ impl<'a> SampiBuilder<'a> {
         self
     }
 
-    pub fn with_metadata(mut self, metadata: SampiMetadata) -> Self {
-        self.metadata = metadata;
-        self
-    }
-
     pub fn with_unix_time(mut self, unix_time: i64) -> Self {
         self.unix_time = Some(unix_time);
         self
     }
 
     pub fn with_random_unix_time(mut self) -> Self {
-        self.unix_time = Some(OsRng.gen_range(0, std::i64::MAX));
+        self.unix_time = Some(OsRng.gen_range(std::i64::MIN, std::i64::MAX));
         self
     }
 
     pub fn build(&self, data: Vec<SampiData>) -> Result<Sampi, SampiError> {
         Sampi::new(
             data,
-            self.metadata,
             self.min_pow_score,
-            &self.ss_keypair,
+            &self.keypair,
             self.unix_time,
             self.threads_count,
         )
@@ -374,14 +388,22 @@ impl<'a> SampiBuilder<'a> {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Sampi {
-    pub public_key: [u8; 32],
-    pub unix_time: i64,
-    pub data: Vec<SampiData>,
-    pub metadata: SampiMetadata,
-    #[serde(with = "BigArray")]
-    signature: [u8; 64],
-    nonce: u64,
+pub enum Sampi {
+    SimpleV1 {
+        public_key: [u8; 32],
+        unix_time: i64,
+        data: Vec<SampiData>,
+        #[serde(with = "BigArray")]
+        signature: [u8; 64],
+    },
+    ProofOfWorkV1 {
+        public_key: [u8; 32],
+        unix_time: i64,
+        data: Vec<SampiData>,
+        #[serde(with = "BigArray")]
+        signature: [u8; 64],
+        nonce: u64,
+    },
 }
 
 impl FromStr for Sampi {
@@ -397,6 +419,41 @@ impl FromStr for Sampi {
 }
 
 impl Sampi {
+    pub fn public_key(&self) -> [u8; 32] {
+        match self {
+            Sampi::SimpleV1 { public_key, .. } => *public_key,
+            Sampi::ProofOfWorkV1 { public_key, .. } => *public_key,
+        }
+    }
+
+    fn signature(&self) -> [u8; 64] {
+        match self {
+            Sampi::SimpleV1 { signature, .. } => *signature,
+            Sampi::ProofOfWorkV1 { signature, .. } => *signature,
+        }
+    }
+
+    fn nonce(&self) -> Option<u64> {
+        match self {
+            Sampi::SimpleV1 { .. } => None,
+            Sampi::ProofOfWorkV1 { nonce, .. } => Some(*nonce),
+        }
+    }
+
+    pub fn unix_time(&self) -> i64 {
+        match self {
+            Sampi::SimpleV1 { unix_time, .. } => *unix_time,
+            Sampi::ProofOfWorkV1 { unix_time, .. } => *unix_time,
+        }
+    }
+
+    pub fn data(&self) -> &Vec<SampiData> {
+        match self {
+            Sampi::SimpleV1 { data, .. } => data,
+            Sampi::ProofOfWorkV1 { data, .. } => data,
+        }
+    }
+
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
         let s: Sampi = bincode::options()
@@ -407,8 +464,8 @@ impl Sampi {
         let signable_data = s.generate_signable_data();
 
         let public_key =
-            PublicKey::from_bytes(&s.public_key).map_err(|_| SampiError::ValidationError)?;
-        let signature = Signature::from(s.signature);
+            PublicKey::from_bytes(&s.public_key()).map_err(|_| SampiError::ValidationError)?;
+        let signature = Signature::from(s.signature());
         public_key
             .verify(&signable_data, &signature)
             .map_err(|_| SampiError::ValidationError)?;
@@ -491,25 +548,30 @@ impl Sampi {
     fn generate_signable_data(&self) -> Vec<u8> {
         let mut signable_data = bincode::options()
             .with_limit(1024)
-            .serialize(&self.data)
+            .serialize(&self.data())
             .unwrap();
-        signable_data.extend(serialize(&self.metadata).unwrap());
-        signable_data.extend(serialize(&self.unix_time).unwrap());
-        signable_data.extend(&self.public_key);
-        signable_data.extend(serialize(&self.nonce).unwrap());
+        signable_data.extend(serialize(&self.unix_time()).unwrap());
+        signable_data.extend(&self.public_key());
+        if let Some(nonce) = self.nonce() {
+            signable_data.extend(serialize(&nonce).unwrap());
+        }
 
         signable_data
     }
 
     /// Get the Proof of Work Score
-    pub fn get_pow_score(&self) -> u8 {
-        let signable_data = self.generate_signable_data();
-        calculate_pow_score(&signable_data)
+    pub fn get_pow_score(&self) -> Option<u8> {
+        match self {
+            Sampi::SimpleV1 { .. } => None,
+            Sampi::ProofOfWorkV1 { .. } => {
+                Some(calculate_pow_score(&self.generate_signable_data()))
+            }
+        }
     }
 
     /// Public key as a hex string
     pub fn get_public_key_as_hex(&self) -> String {
-        hex::encode(&self.public_key)
+        hex::encode(&self.public_key())
     }
 
     /// Get the SHA256 hash of the serialized bytes of this object, as a string
@@ -527,7 +589,6 @@ impl Sampi {
 
     fn new(
         data: Vec<SampiData>,
-        metadata: SampiMetadata,
         min_pow_score: Option<u8>,
         keypair: &SampiKeyPair,
         unix_time: Option<i64>,
@@ -545,54 +606,54 @@ impl Sampi {
         #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
         let unix_time = unix_time.unwrap_or(Date::now() as i64);
 
-        let mut s = Sampi {
-            unix_time,
-            public_key: keypair.keypair.public.to_bytes(),
-            signature: [0; 64],
-            nonce: 0,
-            data,
-            metadata,
-        };
-
-        signable_data.extend(serialize(&metadata).unwrap());
         signable_data.extend(serialize(&unix_time)?);
         signable_data.extend(keypair.keypair.public.as_bytes());
 
-        let nonce = match min_pow_score {
-            Some(min_pow_score) if min_pow_score == 0 => 0,
-            Some(min_pow_score) => {
-                if threads_count == 1 {
-                    find_nonce(min_pow_score, signable_data.clone())
-                } else {
-                    let (sender, receiver) = mpsc::channel();
-                    let solution_found = Arc::new(AtomicBool::new(false));
+        let s = if let Some(min_pow_score) = min_pow_score {
+            let nonce = if min_pow_score == 0 {
+                0
+            } else if threads_count == 1 {
+                find_nonce(min_pow_score, signable_data.clone())
+            } else {
+                let (sender, receiver) = mpsc::channel();
+                let solution_found = Arc::new(AtomicBool::new(false));
 
-                    for start in 0..threads_count {
-                        let signable_data = signable_data.clone();
-                        let sender = sender.clone();
-                        let solution_found = solution_found.clone();
-                        thread::spawn(move || {
-                            find_nonce_threaded(
-                                start,
-                                threads_count,
-                                min_pow_score,
-                                signable_data,
-                                &sender,
-                                solution_found,
-                            );
-                        });
-                    }
-                    drop(sender);
-                    receiver.recv().map_err(|_| SampiError::POWError)?
+                for start in 0..threads_count {
+                    let signable_data = signable_data.clone();
+                    let sender = sender.clone();
+                    let solution_found = solution_found.clone();
+                    thread::spawn(move || {
+                        find_nonce_threaded(
+                            start,
+                            threads_count,
+                            min_pow_score,
+                            signable_data,
+                            &sender,
+                            solution_found,
+                        );
+                    });
                 }
+                drop(sender);
+                receiver.recv().map_err(|_| SampiError::POWError)?
+            };
+
+            signable_data.extend(serialize(&nonce)?);
+
+            Sampi::ProofOfWorkV1 {
+                unix_time,
+                public_key: keypair.keypair.public.to_bytes(),
+                signature: keypair.keypair.sign(&signable_data).to_bytes(),
+                nonce,
+                data,
             }
-            None => 0,
+        } else {
+            Sampi::SimpleV1 {
+                unix_time,
+                public_key: keypair.keypair.public.to_bytes(),
+                signature: keypair.keypair.sign(&signable_data).to_bytes(),
+                data,
+            }
         };
-
-        signable_data.extend(serialize(&nonce)?);
-
-        s.signature = keypair.keypair.sign(&signable_data).to_bytes();
-        s.nonce = nonce;
 
         Ok(s)
     }
@@ -600,7 +661,7 @@ impl Sampi {
 
 impl fmt::Debug for Sampi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Sampi {{ data: {:?} }}", self.data)
+        write!(f, "Sampi {{ data: {:?} }}", self.data())
     }
 }
 
@@ -608,7 +669,7 @@ impl Eq for Sampi {}
 
 impl Ord for Sampi {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.unix_time.cmp(&other.unix_time)
+        self.unix_time().cmp(&other.unix_time())
     }
 }
 
@@ -620,10 +681,10 @@ impl PartialOrd for Sampi {
 
 impl PartialEq for Sampi {
     fn eq(&self, other: &Self) -> bool {
-        self.unix_time == other.unix_time
-            && self.data == other.data
-            && self.public_key == other.public_key
-            && self.nonce == other.nonce
+        self.unix_time() == other.unix_time()
+            && self.data() == other.data()
+            && self.public_key() == other.public_key()
+            && self.nonce() == other.nonce()
     }
 }
 
@@ -656,23 +717,27 @@ pub struct SampiFilter {
 impl SampiFilter {
     /// Test whether a given Sampi Message matches this filter
     pub fn matches(&self, s: &Sampi, current_unix_time: Option<i64>) -> bool {
-        if self.minimum_pow_score != 0 && s.get_pow_score() < self.minimum_pow_score {
+        if self.minimum_pow_score != 0
+            && s.get_pow_score()
+                .map(|score| score < self.minimum_pow_score)
+                .unwrap_or(false)
+        {
             return false;
         }
 
-        if matches!(self.public_key, Some(public_key) if public_key != s.public_key) {
+        if matches!(self.public_key, Some(public_key) if public_key != s.public_key()) {
             return false;
         }
 
-        if s.unix_time < self.minimum_unix_time.unwrap_or(0)
-            || s.unix_time > self.maximum_unix_time.unwrap_or_else(i64::max_value)
+        if s.unix_time() < self.minimum_unix_time.unwrap_or(0)
+            || s.unix_time() > self.maximum_unix_time.unwrap_or_else(i64::max_value)
         {
             return false;
         }
 
         if let Some(maximum_unix_time_age) = self.maximum_unix_time_age {
             if let Some(current_unix_time) = current_unix_time {
-                if current_unix_time - s.unix_time > maximum_unix_time_age {
+                if current_unix_time - s.unix_time() > maximum_unix_time_age {
                     return false;
                 }
             } else {
@@ -682,14 +747,14 @@ impl SampiFilter {
 
         if self.data_variant.is_some()
             && !s
-                .data
+                .data()
                 .iter()
                 .any(|d| Some(d.variant()) == self.data_variant)
         {
             return false;
         }
 
-        let data_length = serialize(&s.data).unwrap().len() as u16;
+        let data_length = serialize(&s.data()).unwrap().len() as u16;
         data_length >= self.minimum_data_length && data_length <= self.maximum_data_length
     }
     /// Create a new SampiFilter, which will match all Sampi messages
