@@ -64,43 +64,44 @@ pub enum SampiError {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
+#[repr(u8)]
 pub enum SampiData {
     // Primitive Types
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    U128(u128),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    I128(i128),
-    F32(f32),
-    F64(f64),
-    Bool(bool),
-    Char(char),
-    Null,
-    String(String),
+    U8(u8) = 0,
+    U16(u16) = 1,
+    U32(u32) = 2,
+    U64(u64) = 3,
+    U128(u128) = 4,
+    I8(i8) = 5,
+    I16(i16) = 6,
+    I32(i32) = 7,
+    I64(i64) = 8,
+    I128(i128) = 9,
+    F32(f32) = 10,
+    F64(f64) = 11,
+    Bool(bool) = 12,
+    Char(char) = 13,
+    Null = 14,
+    String(String) = 15,
 
-    StringPair((String, String)),
-    SampiDataPair((Box<SampiData>, Box<SampiData>)),
+    StringPair((String, String)) = 16,
+    SampiDataPair((Box<SampiData>, Box<SampiData>)) = 17,
 
     // Sampi specific
-    SampiFilter(SampiFilter),
-    Sampi(Box<Sampi>),
+    SampiFilter(SampiFilter) = 18,
+    Sampi(Box<Sampi>) = 19,
 
-    Array16Byte([u8; 16]),
-    Array32Byte([u8; 32]),
+    Array16Byte([u8; 16]) = 20,
+    Array32Byte([u8; 32]) = 21,
     #[serde(with = "BigArray")]
-    Array64Byte([u8; 64]),
+    Array64Byte([u8; 64]) = 22,
     #[serde(with = "BigArray")]
-    Array128Byte([u8; 128]),
+    Array128Byte([u8; 128]) = 23,
     #[serde(with = "BigArray")]
-    Array256Byte([u8; 256]),
+    Array256Byte([u8; 256]) = 24,
 
-    VecSampiData(Vec<SampiData>),
-    Bytes(Vec<u8>),
+    VecSampiData(Vec<SampiData>) = 25,
+    Bytes(Vec<u8>) = 26,
 }
 
 impl From<u64> for SampiData {
@@ -218,35 +219,7 @@ impl SampiData {
     }
 
     pub fn variant(&self) -> u8 {
-        match self {
-            SampiData::U8 { .. } => 0,
-            SampiData::U16 { .. } => 1,
-            SampiData::U32 { .. } => 2,
-            SampiData::U64 { .. } => 3,
-            SampiData::U128 { .. } => 4,
-            SampiData::I8 { .. } => 5,
-            SampiData::I16 { .. } => 6,
-            SampiData::I32 { .. } => 7,
-            SampiData::I64 { .. } => 8,
-            SampiData::I128 { .. } => 9,
-            SampiData::F32 { .. } => 10,
-            SampiData::F64 { .. } => 11,
-            SampiData::Bool { .. } => 12,
-            SampiData::Char { .. } => 13,
-            SampiData::Null { .. } => 14,
-            SampiData::String { .. } => 15,
-            SampiData::StringPair { .. } => 16,
-            SampiData::SampiFilter { .. } => 17,
-            SampiData::Sampi { .. } => 18,
-            SampiData::Array16Byte { .. } => 19,
-            SampiData::Array32Byte { .. } => 20,
-            SampiData::Array64Byte { .. } => 21,
-            SampiData::Array128Byte { .. } => 22,
-            SampiData::Array256Byte { .. } => 23,
-            SampiData::VecSampiData { .. } => 24,
-            SampiData::Bytes { .. } => 25,
-            SampiData::SampiDataPair { .. } => 26,
-        }
+        unsafe { *(self as *const Self as *const u8) }
     }
 }
 
