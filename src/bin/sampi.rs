@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
         } => {
             let mut data = String::new();
             io::stdin().read_to_string(&mut data)?;
-            match sampi::Sampi::from_str(&data.trim()) {
+            match sampi::Sampi::from_str(data.trim()) {
                 Ok(s) => {
                     if !acceptable_public_keys.is_empty()
                         && !acceptable_public_keys

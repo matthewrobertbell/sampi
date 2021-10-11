@@ -333,7 +333,7 @@ impl SampiKeyPair {
     }
 
     pub fn new_sampi(&self) -> SampiBuilder {
-        SampiBuilder::new(&self)
+        SampiBuilder::new(self)
     }
 }
 
@@ -380,7 +380,7 @@ impl<'a> SampiBuilder<'a> {
         Sampi::new(
             data,
             self.min_pow_score,
-            &self.keypair,
+            self.keypair,
             self.unix_time,
             self.threads_count,
         )
@@ -411,10 +411,10 @@ impl FromStr for Sampi {
 
     /// Attempt to deserialize from a string of base64, base58, base32, or hex
     fn from_str(data: &str) -> std::result::Result<Self, Self::Err> {
-        Self::from_base64(&data)
-            .or_else(|_| Self::from_base58(&data))
-            .or_else(|_| Self::from_base32(&data))
-            .or_else(|_| Self::from_hex(&data))
+        Self::from_base64(data)
+            .or_else(|_| Self::from_base58(data))
+            .or_else(|_| Self::from_base32(data))
+            .or_else(|_| Self::from_hex(data))
     }
 }
 
@@ -459,7 +459,7 @@ impl Sampi {
         let s: Sampi = bincode::options()
             .with_limit(1024)
             .allow_trailing_bytes()
-            .deserialize(&bytes)?;
+            .deserialize(bytes)?;
 
         let signable_data = s.generate_signable_data();
 
@@ -773,7 +773,7 @@ impl SampiFilter {
 }
 
 fn calculate_pow_score(signable_data: &[u8]) -> u8 {
-    let mut count = Sha512::digest(&signable_data)
+    let mut count = Sha512::digest(signable_data)
         .iter()
         .map(|&i| i.count_ones())
         .sum();
