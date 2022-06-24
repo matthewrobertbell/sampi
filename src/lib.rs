@@ -39,6 +39,7 @@ use js_sys::Date;
 big_array! { BigArray; }
 
 pub const MAX_DATA_LENGTH: usize = 900;
+pub const MAX_SERIALIZED_BYTES: usize = 1024;
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Error, Debug)]
@@ -456,10 +457,16 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
+        println!("Bytes len: {}", &bytes.len());
+        let limited_bytes = if bytes.len() > MAX_SERIALIZED_BYTES {
+            &bytes[..MAX_SERIALIZED_BYTES]
+        } else {
+            bytes
+        };
         let s: Sampi = bincode::options()
-            .with_limit(1024)
+            .with_limit(MAX_SERIALIZED_BYTES as u64)
             .allow_trailing_bytes()
-            .deserialize(bytes)?;
+            .deserialize(limited_bytes)?;
 
         let signable_data = s.generate_signable_data();
 
@@ -488,7 +495,7 @@ impl Sampi {
     /// Serialize to a Vector of bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         bincode::options()
-            .with_limit(1024)
+            .with_limit(MAX_SERIALIZED_BYTES as u64)
             .serialize(&self)
             .unwrap()
     }
@@ -549,7 +556,7 @@ impl Sampi {
 
     fn generate_signable_data(&self) -> Vec<u8> {
         let mut signable_data = bincode::options()
-            .with_limit(1024)
+            .with_limit(MAX_SERIALIZED_BYTES as u64)
             .serialize(&self.data())
             .unwrap();
         signable_data.extend(serialize(&self.unix_time()).unwrap());
@@ -596,7 +603,9 @@ impl Sampi {
         unix_time: Option<i64>,
         threads_count: u64,
     ) -> Result<Self, SampiError> {
-        let mut signable_data = bincode::options().with_limit(1024).serialize(&data)?;
+        let mut signable_data = bincode::options()
+            .with_limit(MAX_SERIALIZED_BYTES as u64)
+            .serialize(&data)?;
         if signable_data.len() > MAX_DATA_LENGTH + 5 {
             return Err(SampiError::DataTooLargeError);
         }
