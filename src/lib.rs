@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::upper_case_acronyms)]
 
+use std::convert::TryFrom;
 use std::env;
 use std::fmt;
 use std::fs::{create_dir, File};
@@ -460,7 +461,7 @@ impl Sampi {
         let s: Sampi = bincode::options()
             .with_limit(MAX_SERIALIZED_BYTES as u64)
             .allow_trailing_bytes()
-            .deserialize(bytes.get(..MAX_SERIALIZED_BYTES).unwrap_or(&bytes))?;
+            .deserialize(bytes.get(..MAX_SERIALIZED_BYTES).unwrap_or(bytes))?;
 
         let signable_data = s.generate_signable_data();
 
@@ -663,6 +664,25 @@ impl Sampi {
         Ok(s)
     }
 }
+
+impl TryFrom<&[u8]> for Sampi {
+    type Error = SampiError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Sampi::from_bytes(value)
+    }
+}
+/*
+
+impl TryFrom<&Vec<u8>> for Sampi {
+    type Error = SampiError;
+
+    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
+        Sampi::from_bytes(value)
+    }
+}
+
+ */
 
 impl fmt::Debug for Sampi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

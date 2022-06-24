@@ -1,4 +1,5 @@
 use sampi::{Sampi, SampiKeyPair};
+use std::convert::TryInto;
 
 fn main() -> anyhow::Result<()> {
     let kp = SampiKeyPair::new();
@@ -15,14 +16,19 @@ fn main() -> anyhow::Result<()> {
 
     dbg!(&sampi);
 
-    println!("Sampi size in bytes: {}", sampi.to_bytes().len());
-    println!("Overhead: {}", sampi.to_bytes().len() - data_length);
+    let bytes = sampi.to_bytes();
+
+    println!("Sampi size in bytes: {}", bytes.len());
+    println!("Overhead: {}", bytes.len() - data_length);
     let base64_string = sampi.to_base64();
     println!(
         "base64: {} - {} characters",
         &base64_string,
         &base64_string.len()
     );
+
+    let deserialized_sampi: Sampi = bytes.as_slice().try_into()?;
+    dbg!(&deserialized_sampi);
 
     let base58_string = sampi.to_base58();
     println!(
