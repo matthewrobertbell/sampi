@@ -704,7 +704,7 @@ pub fn get_unix_time_millis() -> Option<i64> {
     Some(Date::now() as i64)
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy)]
 pub struct SampiFilter {
     pub minimum_pow_score: u8,
     pub public_key: Option<[u8; 32]>,
