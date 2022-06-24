@@ -457,15 +457,10 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
-        let limited_bytes = if bytes.len() > MAX_SERIALIZED_BYTES {
-            &bytes[..MAX_SERIALIZED_BYTES]
-        } else {
-            bytes
-        };
         let s: Sampi = bincode::options()
             .with_limit(MAX_SERIALIZED_BYTES as u64)
             .allow_trailing_bytes()
-            .deserialize(limited_bytes)?;
+            .deserialize(&bytes[..std::cmp::min(MAX_SERIALIZED_BYTES, bytes.len())])?;
 
         let signable_data = s.generate_signable_data();
 
