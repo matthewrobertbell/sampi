@@ -383,7 +383,6 @@ fn test_to_and_from_bytes_with_corruption() -> Result<(), Error> {
 
     for _ in 0..100 {
         for i in 0..bytes.len() {
-            dbg!(i);
             let mut mutated_bytes = bytes.clone();
             mutated_bytes[i] = rand::thread_rng().gen();
 

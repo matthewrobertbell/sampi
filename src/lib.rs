@@ -465,7 +465,9 @@ impl Sampi {
 
         let public_key =
             PublicKey::from_bytes(&s.public_key()).map_err(|_| SampiError::ValidationError)?;
-        let signature = Signature::from(s.signature());
+        let signature =
+            Signature::from_bytes(&s.signature()).map_err(|_| SampiError::ValidationError)?;
+
         public_key
             .verify(&signable_data, &signature)
             .map_err(|_| SampiError::ValidationError)?;

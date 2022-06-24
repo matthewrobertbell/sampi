@@ -14,7 +14,7 @@ wasm = ["rand/wasm-bindgen", "js-sys"]
 [dependencies]
 anyhow = "1.0"
 thiserror = "1.0.21"
-ed25519-dalek = "1.0.0-pre.4"
+ed25519-dalek = "1.0.1"
 base32 = "0.4.0"
 base64 = "0.9.3"
 rand = "0.7"
