@@ -457,7 +457,6 @@ impl Sampi {
 
     /// Attempt to deserialize a Sampi object from a slice of bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SampiError> {
-        println!("Bytes len: {}", &bytes.len());
         let limited_bytes = if bytes.len() > MAX_SERIALIZED_BYTES {
             &bytes[..MAX_SERIALIZED_BYTES]
         } else {
