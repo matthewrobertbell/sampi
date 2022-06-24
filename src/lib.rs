@@ -1,4 +1,3 @@
-#![feature(arbitrary_enum_discriminant)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::upper_case_acronyms)]
 
