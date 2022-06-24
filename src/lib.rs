@@ -460,7 +460,7 @@ impl Sampi {
         let s: Sampi = bincode::options()
             .with_limit(MAX_SERIALIZED_BYTES as u64)
             .allow_trailing_bytes()
-            .deserialize(&bytes[..std::cmp::min(MAX_SERIALIZED_BYTES, bytes.len())])?;
+            .deserialize(bytes.get(..MAX_SERIALIZED_BYTES).unwrap_or(&bytes))?;
 
         let signable_data = s.generate_signable_data();
 
