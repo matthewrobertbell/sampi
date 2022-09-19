@@ -276,7 +276,7 @@ impl SampiKeyPair {
     }
 
     pub fn public_key_as_hex(&self) -> String {
-        hex::encode(&self.keypair.public)
+        hex::encode(self.keypair.public)
     }
 
     pub fn public_key(&self) -> [u8; 32] {
@@ -555,7 +555,7 @@ impl Sampi {
             .serialize(&self.data())
             .unwrap();
         signable_data.extend(serialize(&self.unix_time()).unwrap());
-        signable_data.extend(&self.public_key());
+        signable_data.extend(self.public_key());
         if let Some(nonce) = self.nonce() {
             signable_data.extend(serialize(&nonce).unwrap());
         }
@@ -575,7 +575,7 @@ impl Sampi {
 
     /// Public key as a hex string
     pub fn get_public_key_as_hex(&self) -> String {
-        hex::encode(&self.public_key())
+        hex::encode(self.public_key())
     }
 
     /// Get the SHA256 hash of the serialized bytes of this object, as a string
