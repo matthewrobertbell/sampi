@@ -23,20 +23,6 @@ impl FromStr for HexData64 {
 }
 
 #[derive(Debug)]
-struct HexData32(Vec<u8>);
-
-impl FromStr for HexData32 {
-    type Err = hex::FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 32 {
-            return Err(Self::Err::InvalidStringLength);
-        }
-        hex::decode(s).map(HexData32)
-    }
-}
-
-#[derive(Debug)]
 enum OutputType {
     Base16,
     Base32,

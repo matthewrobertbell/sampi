@@ -241,7 +241,7 @@ fn test_nesting() -> Result<(), Error> {
         .new_sampi()
         .build(vec![SampiData::Bytes(s_1.to_bytes())])?;
     if let Some(SampiData::Bytes(bytes)) = s_2.data().first() {
-        let s_3 = Sampi::from_bytes(&bytes)?;
+        let s_3 = Sampi::from_bytes(bytes)?;
         assert_eq!(s_1.data(), s_3.data());
         assert_eq!(s_1.unix_time(), s_3.unix_time());
         assert_eq!(s_1.get_hash(), s_3.get_hash());
@@ -278,7 +278,7 @@ fn test_bincode_storage() -> Result<(), Error> {
     let s_2 = Sampi::from_hex(&s_1.to_hex())?;
 
     if let Some(SampiData::Bytes(bytes)) = s_2.data().first() {
-        let decoded_v = bincode::deserialize(&bytes)?;
+        let decoded_v = bincode::deserialize(bytes)?;
         assert_eq!(v, decoded_v);
     }
 
@@ -386,7 +386,7 @@ fn test_to_and_from_bytes_with_corruption() -> Result<(), Error> {
             let mut mutated_bytes = bytes.clone();
             mutated_bytes[i] = rand::thread_rng().gen();
 
-            if &mutated_bytes == &bytes {
+            if mutated_bytes == bytes {
                 continue;
             }
 
@@ -465,13 +465,13 @@ fn test_base58_random_mutation() -> Result<(), Error> {
             let mut mutated_bytes = bytes.clone();
             mutated_bytes[i] = rand::thread_rng().gen();
 
-            if &mutated_bytes == &bytes {
+            if mutated_bytes == bytes {
                 continue;
             }
 
             assert!(std::str::from_utf8(&mutated_bytes)
                 .map_err(|_| SampiError::ValidationError)
-                .and_then(|str| Sampi::from_base58(str))
+                .and_then(Sampi::from_base58)
                 .is_err());
         }
     }
@@ -491,13 +491,13 @@ fn test_base64_random_mutation() -> Result<(), Error> {
             let mut mutated_bytes = bytes.clone();
             mutated_bytes[i] = rand::thread_rng().gen();
 
-            if &mutated_bytes == &bytes {
+            if mutated_bytes == bytes {
                 continue;
             }
 
             if let Ok(new_s) = std::str::from_utf8(&mutated_bytes)
                 .map_err(|_| SampiError::ValidationError)
-                .and_then(|str| Sampi::from_base64(str))
+                .and_then(Sampi::from_base64)
             {
                 assert!(s.to_bytes() == new_s.to_bytes());
             }
@@ -517,7 +517,7 @@ fn test_bytes_random_mutation() -> Result<(), Error> {
             let mut mutated_bytes = bytes.clone();
             mutated_bytes[i] = rand::thread_rng().gen();
 
-            if &mutated_bytes == &bytes {
+            if mutated_bytes == bytes {
                 continue;
             }
 

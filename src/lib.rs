@@ -65,10 +65,11 @@ pub enum SampiError {
     POWError,
 }
 
+#[repr(u8)]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Display)]
 pub enum SampiData {
     // Primitive Types
-    U8(u8),
+    U8(u8) = 1,
     U16(u16),
     U32(u32),
     U64(u64),
@@ -374,7 +375,7 @@ impl<'a> SampiBuilder<'a> {
     }
 
     pub fn with_random_unix_time(mut self) -> Self {
-        self.unix_time = Some(OsRng.gen_range(std::i64::MIN, std::i64::MAX));
+        self.unix_time = Some(OsRng.gen_range(i64::MIN, i64::MAX));
         self
     }
 
@@ -481,7 +482,7 @@ impl Sampi {
         let mut bytes_offset = 0;
         std::iter::from_fn(move || {
             Self::from_bytes(&bytes[bytes_offset..]).ok().map(|s| {
-                bytes_offset += s.to_bytes().len() as usize;
+                bytes_offset += s.to_bytes().len();
                 s
             })
         })
@@ -503,7 +504,7 @@ impl Sampi {
 
     /// Serialize to a hex string
     pub fn to_hex(&self) -> String {
-        hex::encode(&self.to_bytes())
+        hex::encode(self.to_bytes())
     }
 
     /// Attempt to deserialize a Sampi object from a &str of base32
@@ -672,17 +673,6 @@ impl TryFrom<&[u8]> for Sampi {
         Sampi::from_bytes(value)
     }
 }
-/*
-
-impl TryFrom<&Vec<u8>> for Sampi {
-    type Error = SampiError;
-
-    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
-        Sampi::from_bytes(value)
-    }
-}
-
- */
 
 impl fmt::Debug for Sampi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -839,10 +829,7 @@ fn find_nonce_threaded(
 ) {
     signable_data.extend(vec![0; 4]);
     let signable_data_length = signable_data.len();
-    for (i, nonce) in (start..u64::max_value())
-        .step_by(offset as usize)
-        .enumerate()
-    {
+    for (i, nonce) in (start..u64::MAX).step_by(offset as usize).enumerate() {
         if i % 10000 == 0 && solution_found.load(Ordering::Relaxed) {
             return;
         }
