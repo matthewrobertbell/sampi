@@ -481,9 +481,8 @@ impl Sampi {
     pub fn from_bytes_iterator(bytes: &[u8]) -> impl Iterator<Item = Self> + '_ {
         let mut bytes_offset = 0;
         std::iter::from_fn(move || {
-            Self::from_bytes(&bytes[bytes_offset..]).ok().map(|s| {
+            Self::from_bytes(&bytes[bytes_offset..]).ok().inspect(|s| {
                 bytes_offset += s.to_bytes().len();
-                s
             })
         })
     }
